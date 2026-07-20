@@ -37,7 +37,7 @@ interface DashboardProps {
   setDarkMode: (val: boolean) => void;
 }
 
-type ActiveTab = 'products' | 'matrix' | 'compressor' | 'settings';
+type ActiveTab = 'products' | 'matrix' | 'size_guides' | 'compressor' | 'settings';
 
 export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: DashboardProps) {
   const { navigate } = useRouter();
@@ -93,6 +93,129 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
   const [compressorPreview, setCompressorPreview] = useState<string>('');
   const [compressorUploading, setCompressorUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- SIZE GUIDES EDITOR STATE & METHODS ---
+  const [selectedSizeGuidesProduct, setSelectedSizeGuidesProduct] = useState<Product | null>(null);
+  const [sizeGuidesList, setSizeGuidesList] = useState<any[]>([]);
+  const [sizeGuidesFormState, setSizeGuidesFormState] = useState<Record<string, { enabled: boolean; min_height: number; max_height: number; min_weight: number; max_weight: number; shapes: { slim: boolean; athletic: boolean; heavy: boolean } }>>({});
+  const [savingSizeGuides, setSavingSizeGuides] = useState(false);
+
+  const launchSizeGuidesEditorForProduct = async (prod: Product) => {
+    setSelectedSizeGuidesProduct(prod);
+    setSavingSizeGuides(false);
+    setError('');
+    setActiveTab('size_guides');
+
+    try {
+      const guides = await DirectusAPI.getSizeGuidesForProduct(prod.id);
+      setSizeGuidesList(guides);
+
+      // Map sizes into forms
+      const formState: Record<string, any> = {};
+      sizes.forEach(sz => {
+        const matchedGuide = guides.find(g => g.size_id === sz.id);
+        
+        let measurements = {
+          min_height: 150,
+          max_height: 180,
+          min_weight: 50,
+          max_weight: 80,
+          shapes: { slim: true, athletic: true, heavy: false }
+        };
+
+        if (matchedGuide) {
+          const rawMeas = typeof matchedGuide.measurements === 'string' 
+            ? JSON.parse(matchedGuide.measurements) 
+            : matchedGuide.measurements;
+          
+          measurements = {
+            min_height: Number(rawMeas?.min_height ?? 150),
+            max_height: Number(rawMeas?.max_height ?? 180),
+            min_weight: Number(rawMeas?.min_weight ?? 50),
+            max_weight: Number(rawMeas?.max_weight ?? 80),
+            shapes: {
+              slim: !!rawMeas?.shapes?.slim,
+              athletic: !!rawMeas?.shapes?.athletic,
+              heavy: !!rawMeas?.shapes?.heavy,
+            }
+          };
+        }
+
+        formState[sz.id] = {
+          enabled: !!matchedGuide,
+          min_height: measurements.min_height,
+          max_height: measurements.max_height,
+          min_weight: measurements.min_weight,
+          max_weight: measurements.max_weight,
+          shapes: measurements.shapes
+        };
+      });
+
+      setSizeGuidesFormState(formState);
+    } catch (e) {
+      setError(isRtl ? "خطا در بارگذاری اطلاعات جدول راهنمای سایز." : "Could not fetch size guides data.");
+    }
+  };
+
+  const handleSizeGuideCellChange = (sizeId: number, field: string, subfield: string | null, value: any) => {
+    setSizeGuidesFormState(prev => {
+      const updated = { ...prev[sizeId] };
+      if (subfield) {
+        updated[field] = {
+          ...updated[field],
+          [subfield]: value
+        };
+      } else {
+        updated[field] = value;
+      }
+
+      return {
+        ...prev,
+        [sizeId]: updated
+      };
+    });
+  };
+
+  const saveSizeGuidesSubmit = async () => {
+    if (!selectedSizeGuidesProduct) return;
+    setSavingSizeGuides(true);
+    setError('');
+
+    try {
+      for (const sz of sizes) {
+        const formCell = sizeGuidesFormState[sz.id];
+        const existingGuide = sizeGuidesList.find(g => g.size_id === sz.id);
+
+        if (formCell.enabled) {
+          const measurements = {
+            min_height: Number(formCell.min_height),
+            max_height: Number(formCell.max_height),
+            min_weight: Number(formCell.min_weight),
+            max_weight: Number(formCell.max_weight),
+            shapes: formCell.shapes
+          };
+          await DirectusAPI.saveSizeGuide(
+            selectedSizeGuidesProduct.id,
+            sz.id,
+            measurements,
+            existingGuide?.id
+          );
+        } else {
+          if (existingGuide) {
+            await DirectusAPI.deleteSizeGuide(existingGuide.id);
+          }
+        }
+      }
+
+      setSuccess(t.changes_saved);
+      setTimeout(() => setSuccess(''), 3000);
+      await launchSizeGuidesEditorForProduct(selectedSizeGuidesProduct);
+    } catch (e) {
+      setError(isRtl ? "خطا در ثبت مشخصات سایزبندی." : "Failed to sync size guide database.");
+    } finally {
+      setSavingSizeGuides(false);
+    }
+  };
 
   // Load baseline resources
   const loadDashboardData = async () => {
@@ -422,6 +545,14 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
             )}
 
             <button
+              onClick={() => { setActiveTab('size_guides'); setIsEditingProd(null); setSelectedSizeGuidesProduct(null); }}
+              className={`w-full py-2.5 px-4 rounded-xl text-xs font-extrabold flex items-center gap-3 transition-all ${activeTab === 'size_guides' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/15' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'}`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>{isRtl ? "راهنمای سایز و ابعاد" : "Size Guides"}</span>
+            </button>
+
+            <button
               onClick={() => { setActiveTab('compressor'); setIsEditingProd(null); }}
               className={`w-full py-2.5 px-4 rounded-xl text-xs font-extrabold flex items-center gap-3 transition-all ${activeTab === 'compressor' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/15' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'}`}
             >
@@ -483,6 +614,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               <span className="text-sky-500 font-black">
                 {activeTab === 'products' ? (isEditingProd ? t.add_product : t.back_to_products) : ''}
                 {activeTab === 'matrix' ? t.matrix_editor : ''}
+                {activeTab === 'size_guides' ? (isRtl ? "راهنمای سایز و ابعاد" : "Size Guides") : ''}
                 {activeTab === 'compressor' ? t.image_compressor : ''}
                 {activeTab === 'settings' ? t.store_settings : ''}
               </span>
@@ -617,6 +749,14 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                 >
                                   <Grid3X3 className="w-3.5 h-3.5" />
                                   <span>{isRtl ? "ویرایش ماتریس" : "Edit Matrix"}</span>
+                                </button>
+
+                                <button
+                                  onClick={() => launchSizeGuidesEditorForProduct(prod)}
+                                  className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black rounded-lg flex items-center justify-center gap-1.5 transition-all"
+                                >
+                                  <Sliders className="w-3.5 h-3.5" />
+                                  <span>{isRtl ? "راهنمای سایز" : "Size Guide"}</span>
                                 </button>
                                 
                                 <button
@@ -954,6 +1094,280 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                     </button>
                   </div>
 
+                </div>
+              )}
+
+              {/* TAB: SIZE & GUIDE MANAGEMENT */}
+              {activeTab === 'size_guides' && (
+                <div className="space-y-6 animate-fade-in">
+                  {!selectedSizeGuidesProduct ? (
+                    // Listing view (select product)
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-black">{isRtl ? "تنظیم مشخصات و راهنمای سایز لباس‌ها" : "Size & Guide Management"}</h3>
+                        <p className="text-xs text-neutral-400">{isRtl ? "یک کالا را برای تعریف بازه قد و وزن مناسب هر سایز انتخاب کنید." : "Choose a product to specify the height and weight compatibility ranges for each size."}</p>
+                      </div>
+
+                      {products.length === 0 ? (
+                        <div className="text-center py-20 border border-dashed border-neutral-800 rounded-2xl bg-neutral-900/10">
+                          <Package className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+                          <p className="text-sm font-bold text-neutral-400">{isRtl ? "ابتدا یک محصول به کاتالوگ خود اضافه کنید." : "Please add a product to your catalog first."}</p>
+                        </div>
+                      ) : (
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {products.map(prod => (
+                            <div key={prod.id} className={`rounded-xl border p-4 space-y-4 flex flex-col justify-between ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-200'}`}>
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-lg bg-neutral-950/20 overflow-hidden shrink-0">
+                                  {prod.image ? (
+                                    <img src={prod.image} alt={prod.name_fa} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <Image className="w-6 h-6 m-3 text-neutral-500" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="font-extrabold text-xs truncate">{isRtl ? prod.name_fa : prod.name_en}</h4>
+                                  <span className="text-[10px] text-neutral-500 px-1.5 py-0.5 bg-neutral-950/40 rounded mt-1 inline-block">
+                                    {prod.category}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => launchSizeGuidesEditorForProduct(prod)}
+                                className="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all"
+                              >
+                                <Sliders className="w-4 h-4" />
+                                <span>{isRtl ? "تنظیم راهنمای سایز" : "Configure Sizing Guide"}</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Detail editor view for the selected product
+                    <div className="space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-neutral-900/30 border border-neutral-800/60">
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-14 bg-neutral-950/40 border border-neutral-800 rounded-lg overflow-hidden shrink-0">
+                            {selectedSizeGuidesProduct.image ? (
+                              <img src={selectedSizeGuidesProduct.image} alt={selectedSizeGuidesProduct.name_fa} className="w-full h-full object-cover" />
+                            ) : (
+                              <Image className="w-6 h-6 m-4 text-neutral-500" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[9px] font-extrabold rounded">
+                                {selectedSizeGuidesProduct.category}
+                              </span>
+                              <span className="text-[10px] text-neutral-500">ID: {selectedSizeGuidesProduct.id}</span>
+                            </div>
+                            <h3 className="text-sm font-extrabold mt-1">{isRtl ? selectedSizeGuidesProduct.name_fa : selectedSizeGuidesProduct.name_en}</h3>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setSelectedSizeGuidesProduct(null)}
+                            className="px-4 py-2 border border-neutral-700 hover:bg-neutral-800 rounded-lg text-xs text-neutral-300 font-bold"
+                          >
+                            {isRtl ? "بازگشت به لیست کالاها" : "Back to List"}
+                          </button>
+
+                          <button
+                            onClick={saveSizeGuidesSubmit}
+                            disabled={savingSizeGuides}
+                            className="px-5 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold rounded-lg flex items-center gap-2"
+                          >
+                            {savingSizeGuides ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <Check className="w-4 h-4" />
+                                <span>{t.save}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* SIZE GUIDE ROWS */}
+                      <div className="space-y-4">
+                        {sizes.map(sz => {
+                          const cell = sizeGuidesFormState[sz.id] || {
+                            enabled: false,
+                            min_height: 150,
+                            max_height: 180,
+                            min_weight: 50,
+                            max_weight: 80,
+                            shapes: { slim: true, athletic: true, heavy: false }
+                          };
+
+                          return (
+                            <div
+                              key={sz.id}
+                              className={`p-5 rounded-2xl border transition-all ${
+                                cell.enabled 
+                                  ? 'bg-sky-500/5 border-sky-500/20' 
+                                  : 'bg-neutral-900/20 border-neutral-800 opacity-60'
+                              }`}
+                            >
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                {/* Size Identifier Title & Enable Checkbox */}
+                                <div className="flex items-center gap-4 shrink-0 min-w-[150px]">
+                                  <div className="w-10 h-10 rounded-xl bg-sky-600/10 text-sky-400 font-extrabold text-sm flex items-center justify-center border border-sky-500/20">
+                                    {sz.name}
+                                  </div>
+                                  <div>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={cell.enabled}
+                                        onChange={(e) => handleSizeGuideCellChange(sz.id, 'enabled', null, e.target.checked)}
+                                        className="rounded border-neutral-700 bg-neutral-900 text-sky-600 focus:ring-sky-500 w-4 h-4"
+                                      />
+                                      <span className="text-xs font-black text-neutral-300">
+                                        {cell.enabled ? (isRtl ? "فعال شده" : "Active Guide") : (isRtl ? "غیرفعال" : "Disabled")}
+                                      </span>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {/* Slider inputs / values for enabled sizing */}
+                                {cell.enabled ? (
+                                  <div className="flex-1 grid sm:grid-cols-3 gap-6">
+                                    {/* Height Range */}
+                                    <div className="space-y-2">
+                                      <span className="text-[10px] font-bold text-neutral-400 block">
+                                        {isRtl ? "محدوده قد (سانتی‌متر):" : "Height Compatibility (cm):"}
+                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="number"
+                                          value={cell.min_height}
+                                          onChange={(e) => handleSizeGuideCellChange(sz.id, 'min_height', null, Number(e.target.value))}
+                                          className="w-1/2 px-2 py-1.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-bold"
+                                          placeholder="Min"
+                                        />
+                                        <span className="text-neutral-500 text-[10px]">{isRtl ? "تا" : "to"}</span>
+                                        <input
+                                          type="number"
+                                          value={cell.max_height}
+                                          onChange={(e) => handleSizeGuideCellChange(sz.id, 'max_height', null, Number(e.target.value))}
+                                          className="w-1/2 px-2 py-1.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-bold"
+                                          placeholder="Max"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Weight Range */}
+                                    <div className="space-y-2">
+                                      <span className="text-[10px] font-bold text-neutral-400 block">
+                                        {isRtl ? "محدوده وزن (کیلوگرم):" : "Weight Compatibility (kg):"}
+                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="number"
+                                          value={cell.min_weight}
+                                          onChange={(e) => handleSizeGuideCellChange(sz.id, 'min_weight', null, Number(e.target.value))}
+                                          className="w-1/2 px-2 py-1.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-indigo-400 font-bold"
+                                          placeholder="Min"
+                                        />
+                                        <span className="text-neutral-500 text-[10px]">{isRtl ? "تا" : "to"}</span>
+                                        <input
+                                          type="number"
+                                          value={cell.max_weight}
+                                          onChange={(e) => handleSizeGuideCellChange(sz.id, 'max_weight', null, Number(e.target.value))}
+                                          className="w-1/2 px-2 py-1.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-indigo-400 font-bold"
+                                          placeholder="Max"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* Shape selections */}
+                                    <div className="space-y-2">
+                                      <span className="text-[10px] font-bold text-neutral-400 block">
+                                        {isRtl ? "فرم‌های بدنی مجاز:" : "Compatible Body Shapes:"}
+                                      </span>
+                                      <div className="flex flex-wrap gap-2 pt-1">
+                                        {/* Slim Shape */}
+                                        <label className={`px-2.5 py-1 rounded-lg border text-[10px] font-black cursor-pointer flex items-center gap-1.5 transition-all ${
+                                          cell.shapes.slim
+                                            ? 'bg-sky-600/10 border-sky-500 text-sky-400'
+                                            : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'
+                                        }`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={cell.shapes.slim}
+                                            onChange={(e) => handleSizeGuideCellChange(sz.id, 'shapes', 'slim', e.target.checked)}
+                                            className="hidden"
+                                          />
+                                          <span>{isRtl ? "لاغر" : "Slim"}</span>
+                                        </label>
+
+                                        {/* Athletic Shape */}
+                                        <label className={`px-2.5 py-1 rounded-lg border text-[10px] font-black cursor-pointer flex items-center gap-1.5 transition-all ${
+                                          cell.shapes.athletic
+                                            ? 'bg-sky-600/10 border-sky-500 text-sky-400'
+                                            : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'
+                                        }`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={cell.shapes.athletic}
+                                            onChange={(e) => handleSizeGuideCellChange(sz.id, 'shapes', 'athletic', e.target.checked)}
+                                            className="hidden"
+                                          />
+                                          <span>{isRtl ? "ورزشکار" : "Athletic"}</span>
+                                        </label>
+
+                                        {/* Heavy Shape */}
+                                        <label className={`px-2.5 py-1 rounded-lg border text-[10px] font-black cursor-pointer flex items-center gap-1.5 transition-all ${
+                                          cell.shapes.heavy
+                                            ? 'bg-sky-600/10 border-sky-500 text-sky-400'
+                                            : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'
+                                        }`}>
+                                          <input
+                                            type="checkbox"
+                                            checked={cell.shapes.heavy}
+                                            onChange={(e) => handleSizeGuideCellChange(sz.id, 'shapes', 'heavy', e.target.checked)}
+                                            className="hidden"
+                                          />
+                                          <span>{isRtl ? "تنومند" : "Heavy"}</span>
+                                        </label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex-1 text-right text-[11px] text-neutral-500 font-semibold italic">
+                                    {isRtl ? "مشخصات ابعادی برای این سایز تنظیم نشده است." : "No dimensional constraints configured for this size."}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex justify-end pt-4">
+                        <button
+                          onClick={saveSizeGuidesSubmit}
+                          disabled={savingSizeGuides}
+                          className="px-8 py-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-sky-600/10 flex items-center gap-2"
+                        >
+                          {savingSizeGuides ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <Check className="w-4 h-4" />
+                              <span>{isRtl ? "ذخیره و همگام‌سازی مشخصات سایزبندی" : "Save and Sync Sizing Guide"}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -38,6 +38,7 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
   const [sizes, setSizes] = useState<Size[]>([]);
+  const [sizeGuides, setSizeGuides] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -81,6 +82,7 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       setInventory(details.inventory);
       setColors(details.colors);
       setSizes(details.sizes);
+      setSizeGuides(details.sizeGuides || []);
 
       // Pre-select first color & size that are enabled
       if (details.colors.length > 0) setSelectedColor(details.colors[0]);
@@ -116,24 +118,41 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
     setAdvisorMessage('');
     setAdvisorIsAvailable(false);
 
-    // Get rules or fall back to default
-    const rules = product.size_guides?.base_rules || [];
     let theorizedSize = '';
 
-    // Match rules based on height and weight bounds
-    for (const rule of rules) {
+    // Walk through active size guides to find matching bounds
+    let bestMatchSizeId: number | null = null;
+    for (const guide of sizeGuides) {
+      const rawMeas = typeof guide.measurements === 'string'
+        ? JSON.parse(guide.measurements)
+        : guide.measurements;
+
+      const minH = Number(rawMeas?.min_height ?? 150);
+      const maxH = Number(rawMeas?.max_height ?? 180);
+      const minW = Number(rawMeas?.min_weight ?? 50);
+      const maxW = Number(rawMeas?.max_weight ?? 80);
+      const compatibleShapes = rawMeas?.shapes || { slim: true, athletic: true, heavy: false };
+
       if (
-        advHeight >= rule.min_height &&
-        advHeight <= rule.max_height &&
-        advWeight >= rule.min_weight &&
-        advWeight <= rule.max_weight
+        advHeight >= minH &&
+        advHeight <= maxH &&
+        advWeight >= minW &&
+        advWeight <= maxW &&
+        compatibleShapes[advShape] === true
       ) {
-        theorizedSize = rule.shapes[advShape];
+        bestMatchSizeId = guide.size_id;
         break;
       }
     }
 
-    // Default sizing fallback if out of bounds
+    if (bestMatchSizeId) {
+      const sizeObj = sizes.find(s => s.id === bestMatchSizeId);
+      if (sizeObj) {
+        theorizedSize = sizeObj.name;
+      }
+    }
+
+    // Default sizing fallback if out of bounds or no active guide matches
     if (!theorizedSize) {
       if (advHeight < 165) theorizedSize = 'S';
       else if (advHeight < 178) theorizedSize = 'M';
@@ -153,10 +172,8 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
     setCalculatedRec(theorizedSize);
 
     if (activeInventoryInSize.length > 0) {
-      // Best fit is in stock!
       setAdvisorIsAvailable(true);
       
-      // List colors that have this recommended size
       const availableColors = activeInventoryInSize.map(item => {
         const colObj = colors.find(c => c.id === item.color_id);
         return isRtl ? colObj?.name_fa : colObj?.name_en;
@@ -164,8 +181,8 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
 
       setAdvisorMessage(
         isRtl 
-          ? `سایز ${theorizedSize} ایده‌آل شماست و در رنگ‌های (${availableColors}) آماده ارسال است!`
-          : `Size ${theorizedSize} fits you perfectly and is currently in stock in: ${availableColors}`
+          ? `سایز ${theorizedSize} ایده‌آل شماست و هم‌اکنون موجود است!`
+          : `Size ${theorizedSize} fits you perfectly and is currently in stock!`
       );
 
       // Auto-select the size in the variant picker to help buyer checkout!
@@ -174,10 +191,8 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
         setSelectedSize(matchSizeObj);
       }
     } else {
-      // Theorized size is out of stock in the inventory grid! Propose adjacent sizes or notify
       setAdvisorIsAvailable(false);
       
-      // Let's check if there's any active item in stock for adjacent sizes
       const allInStockSizes = inventory
         .filter(item => item.stock > 0)
         .map(item => sizes.find(s => s.id === item.size_id)?.name)
@@ -186,7 +201,7 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       if (allInStockSizes.length > 0) {
         setAdvisorMessage(
           isRtl
-            ? `اندازه علمی شما ${theorizedSize} است، اما متاسفانه در انبار موجود نیست. سایزهای موجود دیگر: ${Array.from(new Set(allInStockSizes)).join(', ')}`
+            ? `اندازه علمی شما ${theorizedSize} است، اما متاسفانه تمام شده. سایر سایزهای موجود: ${Array.from(new Set(allInStockSizes)).join(', ')}`
             : `Your calculated size is ${theorizedSize}, but it is out of stock. Alternative sizes in stock: ${Array.from(new Set(allInStockSizes)).join(', ')}`
         );
       } else {

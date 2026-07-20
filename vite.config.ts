@@ -12,11 +12,15 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      proxy: {
+        '/api/directus': {
+          target: 'http://directus-v2bpvu6wqgna8fbsczs76x4n.89.42.199.190.sslip.io',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/directus/, ''),
+        },
+      },
     },
   };
 });

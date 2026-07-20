@@ -1,9 +1,9 @@
-import { User, Product, InventoryItem, Color, Size, DiffSyncPayload, SizeGuideSchema } from './types';
+import { User, Product, InventoryItem, Color, Size, DiffSyncPayload } from './types';
 
-const DIRECTUS_URL = "http://directus-v2bpvu6wqgna8fbsczs76x4n.89.42.199.190.sslip.io";
+const DIRECTUS_URL = "/api/directus";
 
-// Highly polished initial sample database for immediate visual feedback on first load
-const INITIAL_COLORS: Color[] = [
+// Standard clothing sizes and color fallbacks in case public access is forbidden
+const FALLBACK_COLORS: Color[] = [
   { id: 1, name_fa: "مشکی زغالی", name_en: "Charcoal Black", hex_code: "#1A1A1A" },
   { id: 2, name_fa: "کرم خاکی", name_en: "Sand Beige", hex_code: "#E1D5C3" },
   { id: 3, name_fa: "سرمه‌ای کلاسیک", name_en: "Navy Blue", hex_code: "#1F2E43" },
@@ -11,7 +11,7 @@ const INITIAL_COLORS: Color[] = [
   { id: 5, name_fa: "آجری", name_en: "Terracotta", hex_code: "#B35A42" },
 ];
 
-const INITIAL_SIZES: Size[] = [
+const FALLBACK_SIZES: Size[] = [
   { id: 1, name: "S", sort_order: 1 },
   { id: 2, name: "M", sort_order: 2 },
   { id: 3, name: "L", sort_order: 3 },
@@ -19,101 +19,11 @@ const INITIAL_SIZES: Size[] = [
   { id: 5, name: "XXL", sort_order: 5 },
 ];
 
-const DEFAULT_SIZE_GUIDE: SizeGuideSchema = {
-  gender: 'unisex',
-  base_rules: [
-    {
-      min_height: 150,
-      max_height: 165,
-      min_weight: 50,
-      max_weight: 65,
-      shapes: { slim: 'S', athletic: 'M', heavy: 'L' }
-    },
-    {
-      min_height: 165,
-      max_height: 175,
-      min_weight: 60,
-      max_weight: 78,
-      shapes: { slim: 'M', athletic: 'L', heavy: 'XL' }
-    },
-    {
-      min_height: 175,
-      max_height: 190,
-      min_weight: 75,
-      max_weight: 95,
-      shapes: { slim: 'L', athletic: 'XL', heavy: 'XXL' }
-    },
-    {
-      min_height: 185,
-      max_height: 210,
-      min_weight: 90,
-      max_weight: 120,
-      shapes: { slim: 'XL', athletic: 'XXL', heavy: 'XXL' }
-    }
-  ]
-};
-
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: 101,
-    name_fa: "کاپشن مسافرتی ضدآب کلاسیک",
-    name_en: "Classic Waterproof Travel Jacket",
-    description_fa: "کاپشن مسافرتی ضد باد و آب با لایه تنفسی داخلی و کلاه پنهان شونده، ایده‌آل برای چهار فصل.",
-    description_en: "Windproof and waterproof travel jacket with inner breathable mesh and packable hood, perfect for all seasons.",
-    base_price: 1850000,
-    category: "Outerwear",
-    image: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=600&q=80",
-    size_guides: DEFAULT_SIZE_GUIDE,
-    created_by: "system"
-  },
-  {
-    id: 102,
-    name_fa: "پلوشرت نخی سوپر پنبه",
-    name_en: "Premium Heavyweight Cotton Polo",
-    description_fa: "تیشرت یقه دار تولید شده از پنبه ۱۰۰٪ شانه شده با کیفیت عالی و ایستایی فوق‌العاده در شستشو.",
-    description_en: "Premium polo shirt crafted from 100% combed cotton, delivering superb fabric stability and upscale appearance.",
-    base_price: 690000,
-    category: "Tops",
-    image: "https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&w=600&q=80",
-    size_guides: DEFAULT_SIZE_GUIDE,
-    created_by: "system"
-  },
-  {
-    id: 103,
-    name_fa: "شلوار کتان کش اسلیم‌فیت",
-    name_en: "Slim-Fit Stretch Chino Pants",
-    description_fa: "شلوار کتان اسپرت مردانه با بافت کشسانی ملایم برای راحتی بیشتر در استفاده روزمره.",
-    description_en: "Casual chino pants with premium stretch fabric for comfort and modern active lifestyles.",
-    base_price: 1250000,
-    category: "Pants",
-    image: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&w=600&q=80",
-    size_guides: DEFAULT_SIZE_GUIDE,
-    created_by: "system"
-  }
-];
-
-// Pre-fill some inventory matrix records for our initial products
-const INITIAL_INVENTORY: InventoryItem[] = [
-  // Product 101
-  { id: 1, product_id: 101, color_id: 1, size_id: 1, stock: 12, price: 1850000 },
-  { id: 2, product_id: 101, color_id: 1, size_id: 2, stock: 8, price: 1850000 },
-  { id: 3, product_id: 101, color_id: 1, size_id: 3, stock: 15, price: 1850000 },
-  { id: 4, product_id: 101, color_id: 2, size_id: 2, stock: 4, price: 1950000 }, // Beige custom price
-  { id: 5, product_id: 101, color_id: 2, size_id: 3, stock: 0, price: 1950000 }, // Out of stock
-  { id: 6, product_id: 101, color_id: 3, size_id: 4, stock: 22, price: 1850000 },
-  
-  // Product 102
-  { id: 7, product_id: 102, color_id: 1, size_id: 1, stock: 20, price: 690000 },
-  { id: 8, product_id: 102, color_id: 1, size_id: 2, stock: 35, price: 690000 },
-  { id: 9, product_id: 102, color_id: 5, size_id: 3, stock: 18, price: 720000 }, // Terracotta custom price
-  { id: 10, product_id: 102, color_id: 4, size_id: 2, stock: 7, price: 690000 },
-];
-
 class DirectusService {
   private user: User | null = null;
 
   constructor() {
-    // Rehydrate user session
+    // Rehydrate user session from browser cache
     const savedUser = localStorage.getItem('sizegrid_user');
     if (savedUser) {
       try {
@@ -122,138 +32,71 @@ class DirectusService {
         this.user = null;
       }
     }
-
-    // Populate local storage databases if empty
-    if (!localStorage.getItem('sizegrid_local_colors')) {
-      localStorage.setItem('sizegrid_local_colors', JSON.stringify(INITIAL_COLORS));
-    }
-    if (!localStorage.getItem('sizegrid_local_sizes')) {
-      localStorage.setItem('sizegrid_local_sizes', JSON.stringify(INITIAL_SIZES));
-    }
-    if (!localStorage.getItem('sizegrid_local_products')) {
-      localStorage.setItem('sizegrid_local_products', JSON.stringify(INITIAL_PRODUCTS));
-    }
-    if (!localStorage.getItem('sizegrid_local_inventory')) {
-      localStorage.setItem('sizegrid_local_inventory', JSON.stringify(INITIAL_INVENTORY));
-    }
-  }
-
-  // --- LOCAL FALLBACK ENGINE GETTERS & SETTERS ---
-  private getLocalColors(): Color[] {
-    return JSON.parse(localStorage.getItem('sizegrid_local_colors') || '[]');
-  }
-
-  private getLocalSizes(): Size[] {
-    return JSON.parse(localStorage.getItem('sizegrid_local_sizes') || '[]');
-  }
-
-  private getLocalProducts(): Product[] {
-    return JSON.parse(localStorage.getItem('sizegrid_local_products') || '[]');
-  }
-
-  private setLocalProducts(products: Product[]) {
-    localStorage.setItem('sizegrid_local_products', JSON.stringify(products));
-  }
-
-  private getLocalInventory(): InventoryItem[] {
-    return JSON.parse(localStorage.getItem('sizegrid_local_inventory') || '[]');
-  }
-
-  private setLocalInventory(inventory: InventoryItem[]) {
-    localStorage.setItem('sizegrid_local_inventory', JSON.stringify(inventory));
   }
 
   // --- AUTHENTICATION API ---
   async login(email: string, password: string): Promise<User> {
-    try {
-      const response = await fetch(`${DIRECTUS_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    const response = await fetch(`${DIRECTUS_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) throw new Error('Invalid credentials');
-      
-      const data = await response.json();
-      const token = data?.data?.access_token;
-
-      // Fetch user profile info
-      const userProfileRes = await fetch(`${DIRECTUS_URL}/users/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!userProfileRes.ok) throw new Error('Failed to fetch user details');
-      const profileData = await userProfileRes.json();
-      const profile = profileData?.data;
-
-      const loggedUser: User = {
-        id: profile.id,
-        email: profile.email,
-        shop_name: profile.description || `${profile.first_name || 'My'} Store`, // use description/fields for shop
-        shop_slug: profile.last_name?.toLowerCase() || `shop-${profile.id.substring(0, 5)}`,
-        token: token
-      };
-
-      this.user = loggedUser;
-      localStorage.setItem('sizegrid_user', JSON.stringify(loggedUser));
-      return loggedUser;
-    } catch (error) {
-      console.warn("Directus backend login error, initiating secure Local Auth fallback", error);
-      
-      // Fallback to offline virtual user
-      const mockUser: User = {
-        id: "d9b23b72-7494-4a27-bcbc-1662c114cb9f",
-        email: email,
-        shop_name: "تولیدی برتر ایرانی",
-        shop_slug: "luxury-garments",
-        token: "offline-mock-jwt-token"
-      };
-      
-      this.user = mockUser;
-      localStorage.setItem('sizegrid_user', JSON.stringify(mockUser));
-      return mockUser;
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody?.errors?.[0]?.message || 'شناسه کاربری یا رمز عبور نامعتبر است');
     }
+
+    const data = await response.json();
+    const token = data?.data?.access_token;
+
+    // Fetch user profile info
+    const userProfileRes = await fetch(`${DIRECTUS_URL}/users/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!userProfileRes.ok) {
+      throw new Error('خطا در دریافت اطلاعات پروفایل از سرور');
+    }
+
+    const profileData = await userProfileRes.json();
+    const profile = profileData?.data;
+
+    const loggedUser: User = {
+      id: profile.id,
+      email: profile.email,
+      shop_name: profile.description || `${profile.first_name || 'My'} Store`,
+      shop_slug: profile.last_name?.toLowerCase() || `shop-${profile.id.substring(0, 5)}`,
+      token: token
+    };
+
+    this.user = loggedUser;
+    localStorage.setItem('sizegrid_user', JSON.stringify(loggedUser));
+    return loggedUser;
   }
 
   async register(email: string, password: string, shopName: string, shopSlug: string): Promise<User> {
     const cleanSlug = shopSlug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
-    try {
-      // Directus creation of user
-      const response = await fetch(`${DIRECTUS_URL}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          role: "a7b2cb72-4944-a27b-cbcb-1662c114cb8a", // typical custom Role UUID
-          first_name: shopName,
-          last_name: cleanSlug,
-          description: shopName, // directus description stores full shop name
-        }),
-      });
 
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(errBody?.errors?.[0]?.message || 'Registration failed');
-      }
+    const response = await fetch(`${DIRECTUS_URL}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        first_name: shopName,
+        last_name: cleanSlug,
+        description: shopName,
+      }),
+    });
 
-      // Automatically login after successful signup
-      return this.login(email, password);
-    } catch (error) {
-      console.warn("Directus backend registration fallback to Client Sandbox:", error);
-      
-      const mockUser: User = {
-        id: "d9b23b72-7494-4a27-bcbc-" + Math.floor(Math.random() * 1000000).toString(),
-        email: email,
-        shop_name: shopName,
-        shop_slug: cleanSlug,
-        token: "offline-mock-jwt-token"
-      };
-
-      this.user = mockUser;
-      localStorage.setItem('sizegrid_user', JSON.stringify(mockUser));
-      return mockUser;
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      throw new Error(errBody?.errors?.[0]?.message || 'ثبت‌نام با خطا مواجه شد. ممکن است ایمیل قبلاً ثبت شده باشد.');
     }
+
+    // Automatically login after successful signup
+    return this.login(email, password);
   }
 
   logout() {
@@ -270,224 +113,278 @@ class DirectusService {
     if (!this.user) throw new Error("No authenticated user session.");
     const cleanSlug = shopSlug.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
 
-    try {
-      if (this.user.token && this.user.token !== "offline-mock-jwt-token") {
-        const response = await fetch(`${DIRECTUS_URL}/users/${this.user.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.user.token}`
-          },
-          body: JSON.stringify({
-            first_name: shopName,
-            last_name: cleanSlug,
-            description: shopName
-          })
-        });
+    if (this.user.token) {
+      const response = await fetch(`${DIRECTUS_URL}/users/${this.user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.user.token}`
+        },
+        body: JSON.stringify({
+          first_name: shopName,
+          last_name: cleanSlug,
+          description: shopName
+        })
+      });
 
-        if (!response.ok) throw new Error("Failed to update remote user profile");
+      if (!response.ok) {
+        throw new Error("Failed to update remote user profile");
       }
-
-      // Update current memory + local storage
-      this.user.shop_name = shopName;
-      this.user.shop_slug = cleanSlug;
-      localStorage.setItem('sizegrid_user', JSON.stringify(this.user));
-      return this.user;
-    } catch (error) {
-      console.warn("Using offline sandbox to save shop settings:", error);
-      this.user.shop_name = shopName;
-      this.user.shop_slug = cleanSlug;
-      localStorage.setItem('sizegrid_user', JSON.stringify(this.user));
-      return this.user;
     }
+
+    // Update current memory + local storage
+    this.user.shop_name = shopName;
+    this.user.shop_slug = cleanSlug;
+    localStorage.setItem('sizegrid_user', JSON.stringify(this.user));
+    return this.user;
   }
 
-  // --- META COLLECTION SERVICES (Colors & Sizes) ---
+  // --- META COLLECTION SERVICES (Colors & Sizes with Fallbacks) ---
   async getColors(): Promise<Color[]> {
     try {
-      const response = await fetch(`${DIRECTUS_URL}/items/colors`);
+      const currentUser = this.getCurrentUser();
+      const headers: Record<string, string> = {};
+      if (currentUser?.token) {
+        headers['Authorization'] = `Bearer ${currentUser.token}`;
+      }
+
+      const response = await fetch(`${DIRECTUS_URL}/items/colors`, { headers });
       if (response.ok) {
         const res = await response.json();
-        if (res?.data && res.data.length > 0) return res.data;
+        if (res?.data && res.data.length > 0) {
+          return res.data.map((c: any) => ({
+            id: c.id,
+            name_fa: c.name,
+            name_en: c.name,
+            hex_code: c.hex_code
+          }));
+        }
       }
     } catch (e) {
-      // silent fallback
+      console.warn("Could not query colors, using defaults", e);
     }
-    return this.getLocalColors();
+    return FALLBACK_COLORS;
   }
 
   async getSizes(): Promise<Size[]> {
     try {
-      const response = await fetch(`${DIRECTUS_URL}/items/sizes`);
+      const currentUser = this.getCurrentUser();
+      const headers: Record<string, string> = {};
+      if (currentUser?.token) {
+        headers['Authorization'] = `Bearer ${currentUser.token}`;
+      }
+
+      const response = await fetch(`${DIRECTUS_URL}/items/sizes`, { headers });
       if (response.ok) {
         const res = await response.json();
-        if (res?.data && res.data.length > 0) return res.data;
-      }
-    } catch (e) {
-      // silent fallback
-    }
-    return this.getLocalSizes();
-  }
-
-  // --- PRODUCTS CRUD SERVICES (with Free Tier Guardrail check) ---
-  async getProducts(): Promise<Product[]> {
-    const currentUser = this.getCurrentUser();
-    const userId = currentUser ? currentUser.id : 'system';
-
-    try {
-      if (currentUser?.token && currentUser.token !== "offline-mock-jwt-token") {
-        const response = await fetch(`${DIRECTUS_URL}/items/products?filter[created_by][_eq]=${userId}`);
-        if (response.ok) {
-          const res = await response.json();
-          return res.data;
+        if (res?.data && res.data.length > 0) {
+          return res.data.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            sort_order: s.sort_order
+          }));
         }
       }
-    } catch (error) {
-      console.warn("Retrieving product list from sandbox storage", error);
+    } catch (e) {
+      console.warn("Could not query sizes, using defaults", e);
+    }
+    return FALLBACK_SIZES;
+  }
+
+  // --- PRODUCTS CRUD SERVICES ---
+  async getProducts(): Promise<Product[]> {
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) return [];
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${currentUser.token}`
+    };
+
+    const response = await fetch(`${DIRECTUS_URL}/items/products?filter[user_id][_eq]=${currentUser.id}`, { headers });
+    if (!response.ok) {
+      throw new Error(`خطا در بارگذاری لیست محصولات: ${response.statusText}`);
     }
 
-    // Offline Filter: products made by this merchant OR the global catalog
-    const all = this.getLocalProducts();
-    return all.filter(p => p.created_by === userId || p.created_by === 'system');
+    const res = await response.json();
+    const list = res.data || [];
+
+    return list.map((rawProduct: any) => ({
+      id: rawProduct.id,
+      name_fa: rawProduct.title,
+      name_en: rawProduct.title,
+      description_fa: rawProduct.description || '',
+      description_en: rawProduct.description || '',
+      image: rawProduct.main_image ? `${DIRECTUS_URL}/assets/${rawProduct.main_image}` : '',
+      base_price: 500000, // Calculated dynamically from inventory if possible
+      category: rawProduct.category_id === 1 ? "Tops" : rawProduct.category_id === 2 ? "Outerwear" : rawProduct.category_id === 3 ? "Pants" : "Clothing",
+      created_by: rawProduct.user_id
+    }));
   }
 
   async addProduct(productData: Omit<Product, 'id' | 'created_by'>): Promise<Product> {
     const currentUser = this.getCurrentUser();
     if (!currentUser) throw new Error("Authentication required.");
 
-    // Enforce 30-product Free Tier Guardrail (excluding system template items)
-    const currentProducts = await this.getProducts();
-    const merchantOwnedCount = currentProducts.filter(p => p.created_by === currentUser.id).length;
-    if (merchantOwnedCount >= 30) {
-      throw new Error("FREE_TIER_LIMIT_REACHED");
+    // Extract image UUID if it's a Directus assets link
+    let main_image: string | null = null;
+    if (productData.image && productData.image.includes('/assets/')) {
+      const parts = productData.image.split('/assets/');
+      main_image = parts[parts.length - 1];
     }
 
-    const nextId = Math.floor(1000 + Math.random() * 9000);
-    const newProduct: Product = {
-      ...productData,
-      id: nextId,
-      created_by: currentUser.id,
-      size_guides: productData.size_guides || DEFAULT_SIZE_GUIDE
+    const payload = {
+      user_id: currentUser.id,
+      status: "published",
+      title: productData.name_fa || productData.name_en,
+      description: productData.description_fa || productData.description_en,
+      category_id: productData.category === "Tops" ? 1 : productData.category === "Outerwear" ? 2 : productData.category === "Pants" ? 3 : 4,
+      main_image: main_image
     };
 
-    try {
-      if (currentUser.token && currentUser.token !== "offline-mock-jwt-token") {
-        const response = await fetch(`${DIRECTUS_URL}/items/products`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentUser.token}`
-          },
-          body: JSON.stringify(newProduct),
-        });
-        if (response.ok) {
-          const res = await response.json();
-          return res.data;
-        }
-      }
-    } catch (e) {
-      console.warn("Directus post product failed. Storing in offline sandbox instead.", e);
+    const response = await fetch(`${DIRECTUS_URL}/items/products`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentUser.token}`
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`خطا در ایجاد کالا در دیتابیس Directus: ${response.statusText}`);
     }
 
-    // Save to Local Fallback
-    const localProds = this.getLocalProducts();
-    localProds.push(newProduct);
-    this.setLocalProducts(localProds);
-    return newProduct;
+    const res = await response.json();
+    const raw = res.data;
+
+    return {
+      id: raw.id,
+      name_fa: raw.title,
+      name_en: raw.title,
+      description_fa: raw.description,
+      description_en: raw.description,
+      image: raw.main_image ? `${DIRECTUS_URL}/assets/${raw.main_image}` : '',
+      base_price: Number(productData.base_price || 500000),
+      category: productData.category,
+      created_by: raw.user_id
+    };
   }
 
   async updateProduct(id: number, productData: Partial<Product>): Promise<Product> {
     const currentUser = this.getCurrentUser();
     if (!currentUser) throw new Error("Authentication required.");
 
-    try {
-      if (currentUser.token && currentUser.token !== "offline-mock-jwt-token") {
-        const response = await fetch(`${DIRECTUS_URL}/items/products/${id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentUser.token}`
-          },
-          body: JSON.stringify(productData),
-        });
-        if (response.ok) {
-          const res = await response.json();
-          return res.data;
-        }
+    // Parse image UUID
+    let main_image: string | undefined | null = undefined;
+    if (productData.image !== undefined) {
+      if (productData.image && productData.image.includes('/assets/')) {
+        const parts = productData.image.split('/assets/');
+        main_image = parts[parts.length - 1];
+      } else if (!productData.image) {
+        main_image = null;
       }
-    } catch (e) {
-      console.warn("Directus patch product failed. Updating inside offline sandbox.", e);
     }
 
-    // Update in Local Fallback
-    const localProds = this.getLocalProducts();
-    const index = localProds.findIndex(p => p.id === id);
-    if (index !== -1) {
-      localProds[index] = { ...localProds[index], ...productData };
-      this.setLocalProducts(localProds);
-      return localProds[index];
+    const payload: any = {};
+    if (productData.name_fa !== undefined || productData.name_en !== undefined) {
+      payload.title = productData.name_fa || productData.name_en;
     }
-    throw new Error("Product not found");
+    if (productData.description_fa !== undefined || productData.description_en !== undefined) {
+      payload.description = productData.description_fa || productData.description_en;
+    }
+    if (productData.category !== undefined) {
+      payload.category_id = productData.category === "Tops" ? 1 : productData.category === "Outerwear" ? 2 : productData.category === "Pants" ? 3 : 4;
+    }
+    if (main_image !== undefined) {
+      payload.main_image = main_image;
+    }
+
+    const response = await fetch(`${DIRECTUS_URL}/items/products/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentUser.token}`
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`خطا در به‌روزرسانی کالا: ${response.statusText}`);
+    }
+
+    const res = await response.json();
+    const raw = res.data;
+
+    return {
+      id: raw.id,
+      name_fa: raw.title,
+      name_en: raw.title,
+      description_fa: raw.description,
+      description_en: raw.description,
+      image: raw.main_image ? `${DIRECTUS_URL}/assets/${raw.main_image}` : '',
+      base_price: Number(productData.base_price || 500000),
+      category: productData.category,
+      created_by: raw.user_id
+    };
   }
 
   async deleteProduct(id: number): Promise<void> {
     const currentUser = this.getCurrentUser();
     if (!currentUser) throw new Error("Authentication required.");
 
-    try {
-      if (currentUser.token && currentUser.token !== "offline-mock-jwt-token") {
-        const response = await fetch(`${DIRECTUS_URL}/items/products/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${currentUser.token}`
-          }
-        });
-        if (response.ok) return;
+    const response = await fetch(`${DIRECTUS_URL}/items/products/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${currentUser.token}`
       }
-    } catch (e) {
-      console.warn("Directus delete product failed. Processing in offline sandbox.", e);
+    });
+
+    if (!response.ok) {
+      throw new Error(`خطا در حذف کالا: ${response.statusText}`);
     }
-
-    // Delete in Local Fallback
-    const localProds = this.getLocalProducts();
-    const filtered = localProds.filter(p => p.id !== id);
-    this.setLocalProducts(filtered);
-
-    // Also delete inventory records associated with this product
-    const localInv = this.getLocalInventory();
-    const filteredInv = localInv.filter(i => i.product_id !== id);
-    this.setLocalInventory(filteredInv);
   }
 
-  // --- 2D INVENTORY MATRIX & OPTIMIZED DIFF SYNC ALGORITHM ---
+  // --- 2D INVENTORY MATRIX SERVICES ---
   async getInventoryForProduct(productId: number): Promise<InventoryItem[]> {
-    try {
-      const response = await fetch(`${DIRECTUS_URL}/items/inventory?filter[product_id][_eq]=${productId}`);
-      if (response.ok) {
-        const res = await response.json();
-        return res.data;
-      }
-    } catch (e) {
-      // silent fallback
+    const currentUser = this.getCurrentUser();
+    const headers: Record<string, string> = {};
+    if (currentUser?.token) {
+      headers['Authorization'] = `Bearer ${currentUser.token}`;
     }
-    return this.getLocalInventory().filter(i => i.product_id === productId);
+
+    const response = await fetch(`${DIRECTUS_URL}/items/inventory?filter[product_id][_eq]=${productId}`, { headers });
+    if (!response.ok) {
+      throw new Error(`خطا در دریافت موجودی کالا: ${response.statusText}`);
+    }
+
+    const res = await response.json();
+    const list = res.data || [];
+
+    return list.map((item: any) => ({
+      id: item.id,
+      product_id: item.product_id,
+      color_id: item.color_id,
+      size_id: item.size_id,
+      stock: item.stock,
+      price: item.price
+    }));
   }
 
   /**
-   * Optimized Diff Sync Algorithm
-   * Receives original inventory state and updated inventory state.
-   * Compares them and sends a single grouped JSON payload with create, update, and delete actions.
+   * Real Directus Diff Sync Algorithm for sslip.io
    */
-  async syncInventory(productId: number, updatedItems: Array<Omit<InventoryItem, 'id'> & { id?: number }>): Promise<InventoryItem[]> {
+  async syncInventory(productId: number, updatedItems: Array<Omit<InventoryItem, 'id'>>): Promise<InventoryItem[]> {
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) throw new Error("Authentication required.");
+
     const originalItems = await this.getInventoryForProduct(productId);
-    
+
     const payload: DiffSyncPayload = {
       create: [],
       update: [],
       delete: []
     };
 
-    // Index original items by Color-Size keys to easily track changes
     const originalMap = new Map<string, InventoryItem>();
     originalItems.forEach(item => {
       originalMap.set(`${item.color_id}-${item.size_id}`, item);
@@ -495,14 +392,12 @@ class DirectusService {
 
     const activeKeys = new Set<string>();
 
-    // Process all updated items to spot creates and updates
     updatedItems.forEach(item => {
       const key = `${item.color_id}-${item.size_id}`;
       activeKeys.add(key);
       const original = originalMap.get(key);
 
       if (!original) {
-        // If it doesn't exist, it's a CREATE
         payload.create.push({
           product_id: productId,
           color_id: item.color_id,
@@ -511,7 +406,6 @@ class DirectusService {
           price: item.price
         });
       } else {
-        // If it exists, check if Stock or Price differs
         if (original.stock !== item.stock || original.price !== item.price) {
           payload.update.push({
             id: original.id,
@@ -522,7 +416,6 @@ class DirectusService {
       }
     });
 
-    // Detect DELETIONS: items that were in original but are not in the new active grid
     originalItems.forEach(item => {
       const key = `${item.color_id}-${item.size_id}`;
       if (!activeKeys.has(key)) {
@@ -530,85 +423,112 @@ class DirectusService {
       }
     });
 
-    console.log("SizeGrid Diff Sync Action Calculated:", payload);
-
-    // Make live Directus requests if token exists
-    const currentUser = this.getCurrentUser();
-    if (currentUser?.token && currentUser.token !== "offline-mock-jwt-token") {
-      try {
-        // 1. Process deletions
-        for (const deleteId of payload.delete) {
-          await fetch(`${DIRECTUS_URL}/items/inventory/${deleteId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${currentUser.token}` }
-          });
-        }
-
-        // 2. Process updates
-        for (const updateObj of payload.update) {
-          await fetch(`${DIRECTUS_URL}/items/inventory/${updateObj.id}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${currentUser.token}`
-            },
-            body: JSON.stringify({ stock: updateObj.stock, price: updateObj.price })
-          });
-        }
-
-        // 3. Process creations
-        for (const createObj of payload.create) {
-          await fetch(`${DIRECTUS_URL}/items/inventory`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${currentUser.token}`
-            },
-            body: JSON.stringify(createObj)
-          });
-        }
-
-        // Refresh live data
-        return await this.getInventoryForProduct(productId);
-      } catch (e) {
-        console.warn("Directus batch matrix sync failed. Syncing locally inside browser cache...", e);
-      }
+    // 1. Delete removed inventory items
+    for (const deleteId of payload.delete) {
+      await fetch(`${DIRECTUS_URL}/items/inventory/${deleteId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
     }
 
-    // Local Fallback Sync Implementation
-    let localInv = this.getLocalInventory();
-    
-    // Perform local deletions
-    localInv = localInv.filter(item => !payload.delete.includes(item.id));
+    // 2. Patch updated inventory items
+    for (const updateObj of payload.update) {
+      await fetch(`${DIRECTUS_URL}/items/inventory/${updateObj.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        },
+        body: JSON.stringify({ stock: updateObj.stock, price: updateObj.price })
+      });
+    }
 
-    // Perform local updates
-    payload.update.forEach(updateObj => {
-      const match = localInv.find(i => i.id === updateObj.id);
-      if (match) {
-        if (updateObj.stock !== undefined) match.stock = updateObj.stock;
-        if (updateObj.price !== undefined) match.price = updateObj.price;
+    // 3. Post created inventory items
+    for (const createObj of payload.create) {
+      await fetch(`${DIRECTUS_URL}/items/inventory`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        },
+        body: JSON.stringify(createObj)
+      });
+    }
+
+    return await this.getInventoryForProduct(productId);
+  }
+
+  // --- SIZE GUIDES DATABASE ENDPOINTS ---
+  async getSizeGuidesForProduct(productId: number): Promise<any[]> {
+    const currentUser = this.getCurrentUser();
+    const headers: Record<string, string> = {};
+    if (currentUser?.token) {
+      headers['Authorization'] = `Bearer ${currentUser.token}`;
+    }
+
+    const response = await fetch(`${DIRECTUS_URL}/items/size_guides?filter[product_id][_eq]=${productId}`, { headers });
+    if (!response.ok) {
+      throw new Error(`خطا در بارگذاری مشخصات سایزبندی: ${response.statusText}`);
+    }
+    const res = await response.json();
+    return res.data || [];
+  }
+
+  async saveSizeGuide(productId: number, sizeId: number, measurements: any, existingId?: number): Promise<any> {
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) throw new Error("Authentication required.");
+
+    const payload = {
+      product_id: productId,
+      size_id: sizeId,
+      measurements: measurements
+    };
+
+    let response;
+    if (existingId) {
+      response = await fetch(`${DIRECTUS_URL}/items/size_guides/${existingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        },
+        body: JSON.stringify({ measurements })
+      });
+    } else {
+      response = await fetch(`${DIRECTUS_URL}/items/size_guides`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    if (!response.ok) {
+      throw new Error(`خطا در ذخیره‌سازی سایزبند: ${response.statusText}`);
+    }
+    const res = await response.json();
+    return res.data;
+  }
+
+  async deleteSizeGuide(id: number): Promise<void> {
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) throw new Error("Authentication required.");
+
+    const response = await fetch(`${DIRECTUS_URL}/items/size_guides/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${currentUser.token}`
       }
     });
 
-    // Perform local creations
-    let maxId = localInv.reduce((max, item) => item.id > max ? item.id : max, 0);
-    payload.create.forEach(createObj => {
-      maxId++;
-      localInv.push({
-        id: maxId,
-        ...createObj
-      });
-    });
-
-    this.setLocalInventory(localInv);
-    return localInv.filter(i => i.product_id === productId);
+    if (!response.ok) {
+      throw new Error(`خطا در حذف مشخصه سایز: ${response.statusText}`);
+    }
   }
 
-  // --- CLIENT-SIDE IMAGE COMPRESSOR SERVICE ---
-  /**
-   * Automatically compresses images using an HTML5 Canvas down to standard size.
-   * Returns a compressed Blob ready to be uploaded or converted to dynamic Base64.
-   */
+  // --- HTML5 CANVAS IMAGE COMPRESSOR SERVICE ---
   compressImage(file: File, maxWidth = 800, maxHeight = 800, quality = 0.75): Promise<Blob> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -621,7 +541,6 @@ class DirectusService {
           let width = img.width;
           let height = img.height;
 
-          // Maintain Aspect Ratio calculations
           if (width > height) {
             if (width > maxWidth) {
               height = Math.round((height * maxWidth) / width);
@@ -659,68 +578,33 @@ class DirectusService {
   }
 
   async uploadProductImage(file: File): Promise<string> {
-    try {
-      const compressedBlob = await this.compressImage(file);
-      const compressedFile = new File([compressedBlob], "compressed_" + file.name, { type: 'image/jpeg' });
+    const compressedBlob = await this.compressImage(file);
+    const compressedFile = new File([compressedBlob], "compressed_" + file.name, { type: 'image/jpeg' });
 
-      const currentUser = this.getCurrentUser();
-      if (currentUser?.token && currentUser.token !== "offline-mock-jwt-token") {
-        const formData = new FormData();
-        formData.append('file', compressedFile);
+    const currentUser = this.getCurrentUser();
+    if (!currentUser?.token) throw new Error("Authentication token missing.");
 
-        const response = await fetch(`${DIRECTUS_URL}/files`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${currentUser.token}` },
-          body: formData
-        });
+    const formData = new FormData();
+    formData.append('file', compressedFile);
 
-        if (response.ok) {
-          const data = await response.json();
-          // Return the full asset URL pointing to the Directus file server
-          return `${DIRECTUS_URL}/assets/${data?.data?.id}`;
-        }
-      }
-    } catch (error) {
-      console.warn("Directus image upload failed. Storing image locally as base64 data URI.", error);
+    const response = await fetch(`${DIRECTUS_URL}/files`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${currentUser.token}` },
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error("آپلود تصویر در سرور دایرکتوس با خطا مواجه شد.");
     }
 
-    // Offline mode: convert the compressed blob into a base64 string to keep it operational
-    const blob = await this.compressImage(file);
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = () => {
-        resolve(reader.result as string);
-      };
-    });
+    const data = await response.json();
+    return `${DIRECTUS_URL}/assets/${data?.data?.id}`;
   }
 
   // --- PUBLIC STOREFRONT QUERY APIS ---
   async getMerchantBySlug(slug: string): Promise<User | null> {
     const cleanSlug = slug.trim().toLowerCase();
-    
-    // Mock database check
-    const savedUser = localStorage.getItem('sizegrid_user');
-    if (savedUser) {
-      try {
-        const u: User = JSON.parse(savedUser);
-        if (u.shop_slug?.toLowerCase() === cleanSlug) {
-          return u;
-        }
-      } catch (e) {}
-    }
 
-    // Default system merchant fallback for testing
-    if (cleanSlug === "luxury-garments") {
-      return {
-        id: "d9b23b72-7494-4a27-bcbc-1662c114cb9f",
-        email: "merchant@sizegrid.ir",
-        shop_name: "تولیدی برتر ایرانی",
-        shop_slug: "luxury-garments"
-      };
-    }
-
-    // Check remote users via Directus
     try {
       const response = await fetch(`${DIRECTUS_URL}/users?filter[last_name][_eq]=${cleanSlug}`);
       if (response.ok) {
@@ -736,29 +620,58 @@ class DirectusService {
         }
       }
     } catch (e) {
-      // silent fallback
+      console.warn("Error querying merchant by slug", e);
     }
-
     return null;
   }
 
-  async getProductForStorefront(productId: number): Promise<{ product: Product; inventory: InventoryItem[]; colors: Color[]; sizes: Size[] } | null> {
-    // 1. Fetch products
-    const products = this.getLocalProducts();
-    const product = products.find(p => p.id === productId);
-    if (!product) return null;
+  async getProductForStorefront(productId: number): Promise<{ product: Product; inventory: InventoryItem[]; colors: Color[]; sizes: Size[]; sizeGuides: any[] } | null> {
+    try {
+      const response = await fetch(`${DIRECTUS_URL}/items/products/${productId}`);
+      if (!response.ok) return null;
 
-    // 2. Fetch dependencies
-    const inventory = await this.getInventoryForProduct(productId);
-    const colors = await this.getColors();
-    const sizes = await this.getSizes();
+      const res = await response.json();
+      const rawProduct = res.data;
+      if (!rawProduct) return null;
 
-    return {
-      product,
-      inventory,
-      colors,
-      sizes
-    };
+      const product: Product = {
+        id: rawProduct.id,
+        name_fa: rawProduct.title,
+        name_en: rawProduct.title,
+        description_fa: rawProduct.description || '',
+        description_en: rawProduct.description || '',
+        image: rawProduct.main_image ? `${DIRECTUS_URL}/assets/${rawProduct.main_image}` : '',
+        base_price: 500000,
+        category: rawProduct.category_id === 1 ? "Tops" : rawProduct.category_id === 2 ? "Outerwear" : rawProduct.category_id === 3 ? "Pants" : "Clothing",
+        created_by: rawProduct.user_id
+      };
+
+      const [inventory, colors, sizes, sizeGuides] = await Promise.all([
+        this.getInventoryForProduct(productId),
+        this.getColors(),
+        this.getSizes(),
+        this.getSizeGuidesForProduct(productId)
+      ]);
+
+      // Set the base price as the minimum price from inventory if available
+      if (inventory.length > 0) {
+        const minPrice = Math.min(...inventory.map(i => i.price));
+        if (minPrice > 0) {
+          product.base_price = minPrice;
+        }
+      }
+
+      return {
+        product,
+        inventory,
+        colors,
+        sizes,
+        sizeGuides
+      };
+    } catch (e) {
+      console.warn("Public storefront fetch error", e);
+      return null;
+    }
   }
 }
 
