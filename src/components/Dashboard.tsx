@@ -129,8 +129,10 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
       setColors(colorsList);
       setSizes(sizesList.sort((a, b) => a.sort_order - b.sort_order));
       setWarehouseInventory(allInv);
-    } catch (err) {
-      setError(isRtl ? "خطا در بارگذاری اطلاعات پیش آمد." : "Failed to load dashboard resources.");
+    } catch (err: any) {
+      console.error("Dashboard error:", err);
+      const errMsg = err?.message || String(err);
+      setError(isRtl ? `خطا در بارگذاری اطلاعات: ${errMsg}` : `Failed to load dashboard resources: ${errMsg}`);
     } finally {
       setLoading(false);
     }

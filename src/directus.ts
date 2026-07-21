@@ -203,7 +203,14 @@ class DirectusService {
 
     const response = await fetch(`${DIRECTUS_URL}/items/products?filter[user_id][_eq]=${currentUser.id}`, { headers });
     if (!response.ok) {
-      throw new Error(`خطا در بارگذاری لیست محصولات: ${response.statusText}`);
+      let extra = '';
+      try {
+        const body = await response.json();
+        if (body?.errors?.[0]?.message) {
+          extra = `: ${body.errors[0].message}`;
+        }
+      } catch (e) {}
+      throw new Error(`(کد خطا ${response.status}) خطا در بارگذاری محصولات${extra}`);
     }
 
     const res = await response.json();
@@ -380,7 +387,14 @@ class DirectusService {
 
     const response = await fetch(`${DIRECTUS_URL}/items/inventory?limit=1000`, { headers });
     if (!response.ok) {
-      throw new Error(`خطا در دریافت کل موجودی انبار: ${response.statusText}`);
+      let extra = '';
+      try {
+        const body = await response.json();
+        if (body?.errors?.[0]?.message) {
+          extra = `: ${body.errors[0].message}`;
+        }
+      } catch (e) {}
+      throw new Error(`(کد خطا ${response.status}) خطا در دریافت موجودی انبار${extra}`);
     }
 
     const res = await response.json();
