@@ -3,6 +3,7 @@
 
 @theme {
   --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-vazirmatn: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
 }
 
 html, body {

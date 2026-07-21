@@ -29,6 +29,8 @@ import {
   Sun,
   Moon,
   Search,
+  List,
+  Grid,
   Warehouse,
   CheckCircle2,
   RefreshCw,
@@ -123,6 +125,13 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
   const [settingsShopSlug, setSettingsShopSlug] = useState(currentUser?.shop_slug || '');
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Dynamic categories list
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+
+  // Products listing UX states
+  const [productSearch, setProductSearch] = useState('');
+  const [productView, setProductView] = useState<'grid' | 'list'>('grid');
+
   // Compressor Tab State
   const [compressorFile, setCompressorFile] = useState<File | null>(null);
   const [compressorOriginalSize, setCompressorOriginalSize] = useState<number>(0);
@@ -137,18 +146,20 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     if (!currentUser) return;
     setLoading(true);
     try {
-      const [prodsList, colorsList, sizesList, allInv, templates] = await Promise.all([
+      const [prodsList, colorsList, sizesList, allInv, templates, catsList] = await Promise.all([
         DirectusAPI.getProducts(),
         DirectusAPI.getColors(),
         DirectusAPI.getSizes(),
         DirectusAPI.getAllInventory(),
-        DirectusAPI.getSizeGuideTemplates()
+        DirectusAPI.getSizeGuideTemplates(),
+        DirectusAPI.getCategories()
       ]);
       setProducts(prodsList);
       setColors(colorsList);
       setSizes(sizesList.sort((a, b) => a.sort_order - b.sort_order));
       setWarehouseInventory(allInv);
       setTemplatesList(templates);
+      setCategoriesList(catsList);
     } catch (err: any) {
       console.error("Dashboard error:", err);
       const errMsg = err?.message || String(err);
@@ -180,6 +191,22 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     setSelectedColorIds(prev =>
       prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]
     );
+  };
+
+  const isMyCustomSize = (s: Size) => {
+    if (!currentUser) return false;
+    if (!s.user_created) return false;
+    if (typeof s.user_created === 'string') {
+      return s.user_created === currentUser.id;
+    }
+    if (typeof s.user_created === 'object') {
+      return (s.user_created as any).id === currentUser.id;
+    }
+    return false;
+  };
+
+  const isSystemSize = (s: Size) => {
+    return !s.user_created;
   };
 
   const toggleSizeSelect = (id: number) => {
@@ -1022,73 +1049,217 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                         </button>
                       </div>
 
+                      {/* Search & View Toggle Controls */}
+                      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between p-4 rounded-xl bg-neutral-900/40 border border-white/10 backdrop-blur-md">
+                        <div className="relative w-full sm:max-w-md">
+                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                          <input
+                            type="text"
+                            value={productSearch}
+                            onChange={(e) => setProductSearch(e.target.value)}
+                            placeholder={isRtl ? "جستجوی کالا بر اساس نام، شناسه یا دسته‌بندی..." : "Search by title, SKU, category..."}
+                            className={`w-full pr-10 pl-4 py-2 text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white placeholder-neutral-500 font-sans' : 'bg-neutral-50 border-neutral-200 text-neutral-900 placeholder-neutral-400 font-sans'}`}
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                          <span className="text-xs text-neutral-400 font-bold">{isRtl ? "حالت نمایش:" : "View Mode:"}</span>
+                          <div className="flex p-0.5 rounded-lg bg-neutral-950 border border-white/10">
+                            <button
+                              type="button"
+                              onClick={() => setProductView('grid')}
+                              className={`p-1.5 rounded-md transition-all cursor-pointer ${productView === 'grid' ? 'bg-sky-600 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                              title={isRtl ? "نمایش شبکه‌ای" : "Grid View"}
+                            >
+                              <Grid className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setProductView('list')}
+                              className={`p-1.5 rounded-md transition-all cursor-pointer ${productView === 'list' ? 'bg-sky-600 text-white' : 'text-neutral-400 hover:text-neutral-200'}`}
+                              title={isRtl ? "نمایش جدولی" : "List/Table View"}
+                            >
+                              <List className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       {products.length === 0 ? (
                         <div className="text-center py-20 border border-dashed border-neutral-800 rounded-2xl bg-neutral-900/10">
                           <Package className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
                           <p className="text-sm font-bold text-neutral-400">{isRtl ? "هیچ محصولی ثبت نشده است." : "No products available."}</p>
                         </div>
                       ) : (
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {products.map(prod => (
-                            <div key={prod.id} className={`rounded-xl border overflow-hidden flex flex-col justify-between ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-200'}`}>
-                              <div>
-                                <div className="h-40 bg-neutral-950/20 relative">
-                                  {prod.image ? (
-                                    <img src={prod.image} alt={prod.name_fa} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex flex-col justify-center items-center text-neutral-500 bg-neutral-950/20">
-                                      <Image className="w-8 h-8 opacity-40 mb-1" />
-                                      <span className="text-[10px]">{isRtl ? "فاقد تصویر کالا" : "No Image"}</span>
+                        <>
+                          {productView === 'grid' ? (
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {products
+                                .filter(prod => {
+                                  const title = (isRtl ? prod.name_fa : prod.name_en) || '';
+                                  const desc = (isRtl ? prod.description_fa : prod.description_en) || '';
+                                  const cat = prod.category || '';
+                                  const sku = `SG-PROD-${prod.id}`;
+                                  const searchLower = productSearch.toLowerCase();
+                                  return title.toLowerCase().includes(searchLower) ||
+                                         desc.toLowerCase().includes(searchLower) ||
+                                         cat.toLowerCase().includes(searchLower) ||
+                                         sku.toLowerCase().includes(searchLower);
+                                })
+                                .map(prod => (
+                                  <div key={prod.id} className={`rounded-xl border overflow-hidden flex flex-col justify-between backdrop-blur-md transition-all duration-300 hover:shadow-xl hover:scale-[1.01] ${darkMode ? 'bg-neutral-900/40 border-white/10' : 'bg-white border-neutral-200'}`}>
+                                    <div>
+                                      <div className="h-40 bg-neutral-950/20 relative">
+                                        {prod.image ? (
+                                          <img src={prod.image} alt={prod.name_fa} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full flex flex-col justify-center items-center text-neutral-500 bg-neutral-950/20">
+                                            <Image className="w-8 h-8 opacity-40 mb-1" />
+                                            <span className="text-[10px]">{isRtl ? "فاقد تصویر کالا" : "No Image"}</span>
+                                          </div>
+                                        )}
+                                        <span className="absolute top-3 left-3 px-2 py-1 bg-sky-600 text-white rounded-lg font-bold text-[9px] shadow-sm">
+                                          {prod.category}
+                                        </span>
+                                      </div>
+
+                                      <div className="p-4 space-y-2">
+                                        <h4 className="font-extrabold text-sm line-clamp-1">{isRtl ? prod.name_fa : prod.name_en}</h4>
+                                        <p className="text-[10px] text-neutral-400 line-clamp-2 leading-relaxed">
+                                          {isRtl ? prod.description_fa : prod.description_en}
+                                        </p>
+                                        <p className="text-xs font-black text-sky-500 pt-1">
+                                          {isRtl ? `${prod.base_price.toLocaleString('fa-IR')} تومان` : `$${(prod.base_price / 50000).toFixed(1)} USD`}
+                                        </p>
+                                      </div>
                                     </div>
-                                  )}
-                                  <span className="absolute top-3 left-3 px-2 py-1 bg-sky-600 text-white rounded-lg font-bold text-[9px]">
-                                    {prod.category}
-                                  </span>
-                                </div>
 
-                                <div className="p-4 space-y-2">
-                                  <h4 className="font-extrabold text-sm line-clamp-1">{isRtl ? prod.name_fa : prod.name_en}</h4>
-                                  <p className="text-[10px] text-neutral-400 line-clamp-2 leading-relaxed">
-                                    {isRtl ? prod.description_fa : prod.description_en}
-                                  </p>
-                                  <p className="text-xs font-black text-sky-500 pt-1">
-                                    {isRtl ? `${prod.base_price.toLocaleString('fa-IR')} تومان` : `$${(prod.base_price / 50000).toFixed(1)} USD`}
-                                  </p>
-                                </div>
-                              </div>
+                                    <div className="p-4 border-t border-neutral-800/40 grid grid-cols-2 gap-2">
+                                      <button
+                                        onClick={() => triggerEditProductMode(prod)}
+                                        className="col-span-2 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                        <span>{isRtl ? "ویرایش و تنظیمات کالا" : "Edit & Configure Product"}</span>
+                                      </button>
 
-                              <div className="p-4 border-t border-neutral-800/40 grid grid-cols-2 gap-2">
-                                <button
-                                  onClick={() => triggerEditProductMode(prod)}
-                                  className="col-span-2 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black rounded-lg flex items-center justify-center gap-1.5 transition-all"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                  <span>{isRtl ? "ویرایش و تنظیمات کالا" : "Edit & Configure Product"}</span>
-                                </button>
+                                      <a
+                                        href={`/shop/${currentUser?.shop_slug || 'shop'}/product/${prod.id}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="col-span-2 py-1.5 border border-dashed border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold rounded-lg flex items-center justify-center gap-1 transition-all"
+                                      >
+                                        <Compass className="w-3.5 h-3.5" />
+                                        <span>{isRtl ? "پیش‌نمایش فروشگاه خریدار" : "Public Shop Preview"}</span>
+                                      </a>
 
-                                <a
-                                  href={`/shop/${currentUser?.shop_slug || 'shop'}/product/${prod.id}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="col-span-2 py-1.5 border border-dashed border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold rounded-lg flex items-center justify-center gap-1 transition-all"
-                                >
-                                  <Compass className="w-3.5 h-3.5" />
-                                  <span>{isRtl ? "پیش‌نمایش فروشگاه خریدار" : "Public Shop Preview"}</span>
-                                </a>
-
-                                {prod.created_by !== 'system' && (
-                                  <button
-                                    onClick={() => handleDeleteProduct(prod.id)}
-                                    className="col-span-2 py-1.5 hover:bg-red-500/10 text-red-400 text-[10px] font-extrabold rounded-lg flex items-center justify-center gap-1 transition-all"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>{t.delete}</span>
-                                  </button>
-                                )}
-                              </div>
+                                      {prod.created_by !== 'system' && (
+                                        <button
+                                          onClick={() => handleDeleteProduct(prod.id)}
+                                          className="col-span-2 py-1.5 hover:bg-red-500/10 text-red-400 text-[10px] font-extrabold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                          <span>{t.delete}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
                             </div>
-                          ))}
-                        </div>
+                          ) : (
+                            <div className="overflow-x-auto rounded-xl border border-white/10 bg-neutral-900/40 backdrop-blur-md">
+                              <table className="w-full text-right text-xs">
+                                <thead className="bg-neutral-950/60 text-neutral-400 font-black border-b border-white/10">
+                                  <tr>
+                                    <th className="p-4 text-center w-16">{isRtl ? "تصویر" : "Image"}</th>
+                                    <th className="p-4">{isRtl ? "نام کالا / جزئیات" : "Product Details"}</th>
+                                    <th className="p-4">{isRtl ? "شناسه کالا" : "SKU"}</th>
+                                    <th className="p-4">{isRtl ? "دسته‌بندی" : "Category"}</th>
+                                    <th className="p-4">{isRtl ? "قیمت پایه" : "Base Price"}</th>
+                                    <th className="p-4 text-center w-40">{isRtl ? "عملیات" : "Actions"}</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                  {products
+                                    .filter(prod => {
+                                      const title = (isRtl ? prod.name_fa : prod.name_en) || '';
+                                      const desc = (isRtl ? prod.description_fa : prod.description_en) || '';
+                                      const cat = prod.category || '';
+                                      const sku = `SG-PROD-${prod.id}`;
+                                      const searchLower = productSearch.toLowerCase();
+                                      return title.toLowerCase().includes(searchLower) ||
+                                             desc.toLowerCase().includes(searchLower) ||
+                                             cat.toLowerCase().includes(searchLower) ||
+                                             sku.toLowerCase().includes(searchLower);
+                                    })
+                                    .map(prod => (
+                                      <tr key={prod.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-4 text-center">
+                                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-950/40 border border-white/10 flex items-center justify-center mx-auto">
+                                            {prod.image ? (
+                                              <img src={prod.image} alt={prod.name_fa} className="w-full h-full object-cover" />
+                                            ) : (
+                                              <Image className="w-4 h-4 text-neutral-500 opacity-40" />
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="p-4 font-extrabold text-neutral-200">
+                                          <div>
+                                            <p>{isRtl ? prod.name_fa : prod.name_en}</p>
+                                            <p className="text-[10px] text-neutral-400 line-clamp-1 font-normal mt-0.5">
+                                              {isRtl ? prod.description_fa : prod.description_en}
+                                            </p>
+                                          </div>
+                                        </td>
+                                        <td className="p-4 font-mono text-[10px] text-neutral-400">
+                                          SG-PROD-{prod.id}
+                                        </td>
+                                        <td className="p-4">
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                                            {prod.category}
+                                          </span>
+                                        </td>
+                                        <td className="p-4 font-black text-sky-400">
+                                          {isRtl ? `${prod.base_price.toLocaleString('fa-IR')} تومان` : `$${(prod.base_price / 50000).toFixed(1)} USD`}
+                                        </td>
+                                        <td className="p-4">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button
+                                              onClick={() => triggerEditProductMode(prod)}
+                                              className="p-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-lg border border-indigo-500/30 transition-all cursor-pointer"
+                                              title={isRtl ? "ویرایش و تنظیمات کالا" : "Edit & Configure Product"}
+                                            >
+                                              <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            
+                                            <a
+                                              href={`/shop/${currentUser?.shop_slug || 'shop'}/product/${prod.id}`}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="p-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg border border-emerald-500/30 transition-all"
+                                              title={isRtl ? "پیش‌نمایش خریدار" : "Public Shop Preview"}
+                                            >
+                                              <Compass className="w-3.5 h-3.5" />
+                                            </a>
+
+                                            {prod.created_by !== 'system' && (
+                                              <button
+                                                onClick={() => handleDeleteProduct(prod.id)}
+                                                className="p-1.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-lg border border-red-500/30 transition-all cursor-pointer"
+                                                title={t.delete}
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   ) : (
@@ -1240,22 +1411,74 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                 onChange={(e) => setProdFormCategory(e.target.value)}
                                 className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
                               >
-                                <option value="Clothing">{isRtl ? "پوشاک عمومی" : "General Clothing"}</option>
-                                <option value="Tops">{isRtl ? "تیشرت و پولوشرت" : "Tops & Polo"}</option>
-                                <option value="Outerwear">{isRtl ? "کاپشن و کت" : "Outerwear"}</option>
-                                <option value="Pants">{isRtl ? "شلوار کتان و جین" : "Pants"}</option>
+                                {categoriesList.map(cat => (
+                                  <option key={cat.id} value={cat.name}>
+                                    {isRtl ? (cat.name_fa || cat.name) : cat.name}
+                                  </option>
+                                ))}
+                                {categoriesList.length === 0 && (
+                                  <>
+                                    <option value="Clothing">{isRtl ? "پوشاک عمومی" : "General Clothing"}</option>
+                                    <option value="Tops">{isRtl ? "تیشرت و پولوشرت" : "Tops & Polo"}</option>
+                                    <option value="Outerwear">{isRtl ? "کاپشن و کت" : "Outerwear"}</option>
+                                    <option value="Pants">{isRtl ? "شلوار کتان و جین" : "Pants"}</option>
+                                  </>
+                                )}
                               </select>
                             </div>
 
                             <div>
-                              <label className="block text-xs font-bold mb-1.5 text-neutral-400">{t.image} URL</label>
-                              <input
-                                type="text"
-                                value={prodFormImage}
-                                onChange={(e) => setProdFormImage(e.target.value)}
-                                placeholder="https://images.unsplash.com/..."
-                                className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 text-left dir-ltr ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
-                              />
+                              <label className="block text-xs font-bold mb-1.5 text-neutral-400">
+                                {isRtl ? "تصویر کالا (آپلود فشرده با کانواس)" : "Product Image (Direct Canvas Compress & Upload)"}
+                              </label>
+                              
+                              <div className="space-y-3">
+                                {prodFormImage ? (
+                                  <div className="relative group rounded-xl overflow-hidden border border-white/10 aspect-video bg-neutral-950/40 flex items-center justify-center">
+                                    <img src={prodFormImage} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                    <div className="absolute inset-0 bg-neutral-950/80 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-all duration-200">
+                                      <button
+                                        type="button"
+                                        onClick={() => setProdFormImage('')}
+                                        className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                        <span>{isRtl ? "حذف تصویر" : "Delete Image"}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-neutral-800 hover:border-sky-500/50 bg-neutral-950/20 hover:bg-sky-500/5 rounded-xl p-6 transition-all cursor-pointer text-center group">
+                                    <Upload className="w-8 h-8 text-neutral-500 group-hover:text-sky-400 group-hover:scale-110 transition-all mb-2" />
+                                    <span className="text-xs font-extrabold text-neutral-300 group-hover:text-sky-400">
+                                      {isRtl ? "انتخاب تصویر برای فشرده‌سازی و آپلود" : "Click to Compress & Upload Image"}
+                                    </span>
+                                    <span className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+                                      {isRtl ? "تصویر با استفاده از کانواس در مرورگر فشرده و سپس آپلود می‌شود" : "Compressed in-browser via canvas for fast uploads"}
+                                    </span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          try {
+                                            setProdFormStatus('saving');
+                                            setError('');
+                                            const url = await DirectusAPI.uploadProductImage(file);
+                                            setProdFormImage(url);
+                                          } catch (err: any) {
+                                            setError(isRtl ? "خطا در آپلود تصویر" : "Error uploading image: " + err.message);
+                                          } finally {
+                                            setProdFormStatus('idle');
+                                          }
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -2520,18 +2743,18 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                             {isRtl ? "سایزهای سفارشی شما" : "Merchant Custom Sizes"}
                           </h4>
                           <span className="text-[10px] bg-sky-500/10 text-sky-400 font-extrabold px-2 py-0.5 rounded-full">
-                            {sizes.filter(s => s.user_created === currentUser?.id).length} {isRtl ? "مورد" : "items"}
+                            {sizes.filter(isMyCustomSize).length} {isRtl ? "مورد" : "items"}
                           </span>
                         </div>
 
                         <div className="grid gap-2.5 sm:grid-cols-2">
-                          {sizes.filter(s => s.user_created === currentUser?.id).length === 0 ? (
+                          {sizes.filter(isMyCustomSize).length === 0 ? (
                             <div className="col-span-full py-8 text-center bg-neutral-950/20 border border-white/5 rounded-xl italic text-xs text-neutral-500">
                               {isRtl ? "هیچ سایز سفارشی هنوز اضافه نکرده‌اید." : "No custom merchant sizes defined yet."}
                             </div>
                           ) : (
                             sizes
-                              .filter(s => s.user_created === currentUser?.id)
+                              .filter(isMyCustomSize)
                               .map(sz => (
                                 <div 
                                   key={sz.id} 
@@ -2567,13 +2790,13 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                             {isRtl ? "سایزهای پیش‌فرض و سیستمی (غیرقابل ویرایش)" : "System Default Sizes (Read-Only)"}
                           </h4>
                           <span className="text-[10px] bg-neutral-500/10 text-neutral-400 font-extrabold px-2 py-0.5 rounded-full">
-                            {sizes.filter(s => !s.user_created).length} {isRtl ? "مورد" : "items"}
+                            {sizes.filter(isSystemSize).length} {isRtl ? "مورد" : "items"}
                           </span>
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-3">
                           {sizes
-                            .filter(s => !s.user_created)
+                            .filter(isSystemSize)
                             .map(sz => (
                               <div 
                                 key={sz.id} 

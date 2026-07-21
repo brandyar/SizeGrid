@@ -167,6 +167,35 @@ class DirectusService {
     return FALLBACK_COLORS;
   }
 
+  async getCategories(): Promise<Array<{ id: number; name: string; name_fa?: string }>> {
+    try {
+      const currentUser = this.getCurrentUser();
+      const headers: Record<string, string> = {};
+      if (currentUser?.token) {
+        headers['Authorization'] = `Bearer ${currentUser.token}`;
+      }
+      const response = await fetch(`${DIRECTUS_URL}/items/categories`, { headers });
+      if (response.ok) {
+        const res = await response.json();
+        if (res?.data && res.data.length > 0) {
+          return res.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            name_fa: c.name_fa || c.name
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not query categories, using defaults", e);
+    }
+    return [
+      { id: 1, name: "Tops", name_fa: "بالاپوش (تیشرت، پیراهن)" },
+      { id: 2, name: "Outerwear", name_fa: "پوشاک بیرونی (کاپشن، هودی)" },
+      { id: 3, name: "Pants", name_fa: "شلوار و پایین‌پوش" },
+      { id: 4, name: "Clothing", name_fa: "سایر پوشاک" }
+    ];
+  }
+
   async getSizes(): Promise<Size[]> {
     const currentUser = this.getCurrentUser();
     let sizesList: Size[] = [];

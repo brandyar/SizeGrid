@@ -52,10 +52,51 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
   // Advisor States
   const [advHeight, setAdvHeight] = useState<number>(170);
   const [advWeight, setAdvWeight] = useState<number>(65);
-  const [advShape, setAdvShape] = useState<'slim' | 'athletic' | 'heavy'>('athletic');
+  const [advShape, setAdvShape] = useState<'slim' | 'regular' | 'athletic' | 'heavy'>('athletic');
+  const [isPrecisionMode, setIsPrecisionMode] = useState<boolean>(false);
+  const [advChest, setAdvChest] = useState<number>(95);
+  const [advWaist, setAdvWaist] = useState<number>(85);
+  const [advHip, setAdvHip] = useState<number>(98);
+  const [advShoulder, setAdvShoulder] = useState<number>(42);
   const [calculatedRec, setCalculatedRec] = useState<string>('');
   const [advisorMessage, setAdvisorMessage] = useState<string>('');
   const [advisorIsAvailable, setAdvisorIsAvailable] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isPrecisionMode) {
+      let chest = advWeight * 1.4;
+      let waist = advWeight * 1.22;
+      let hip = advWeight * 1.4;
+      let shoulder = advHeight * 0.23;
+
+      if (advShape === 'slim') {
+        chest = advWeight * 1.35 + (advHeight - 100) * 0.1;
+        waist = advWeight * 1.10 + (advHeight - 100) * 0.1;
+        hip = advWeight * 1.35 + (advHeight - 100) * 0.1;
+        shoulder = advHeight * 0.22 - 1;
+      } else if (advShape === 'athletic') {
+        chest = advWeight * 1.45 + (advHeight - 100) * 0.1;
+        waist = advWeight * 1.18 + (advHeight - 100) * 0.1;
+        hip = advWeight * 1.42 + (advHeight - 100) * 0.1;
+        shoulder = advHeight * 0.23 + 2;
+      } else if (advShape === 'heavy') {
+        chest = advWeight * 1.55 + (advHeight - 100) * 0.1;
+        waist = advWeight * 1.45 + (advHeight - 100) * 0.1;
+        hip = advWeight * 1.50 + (advHeight - 100) * 0.1;
+        shoulder = advHeight * 0.23 + 1;
+      } else { // regular
+        chest = advWeight * 1.40 + (advHeight - 100) * 0.1;
+        waist = advWeight * 1.22 + (advHeight - 100) * 0.1;
+        hip = advWeight * 1.40 + (advHeight - 100) * 0.1;
+        shoulder = advHeight * 0.23;
+      }
+
+      setAdvChest(Math.round(chest));
+      setAdvWaist(Math.round(waist));
+      setAdvHip(Math.round(hip));
+      setAdvShoulder(Math.round(shoulder));
+    }
+  }, [advHeight, advWeight, advShape, isPrecisionMode]);
 
   // Parse parameters from route
   const shopSlug = params.shop_slug || 'luxury-garments';
@@ -120,7 +161,7 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
 
     let theorizedSize = '';
 
-    // Walk through active size guides to find matching bounds
+    // Step A: Find matching size guide from template rules
     let bestMatchSizeId: number | null = null;
     for (const guide of sizeGuides) {
       const rawMeas = typeof guide.measurements === 'string'
@@ -131,14 +172,14 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       const maxH = Number(rawMeas?.max_height ?? 180);
       const minW = Number(rawMeas?.min_weight ?? 50);
       const maxW = Number(rawMeas?.max_weight ?? 80);
-      const compatibleShapes = rawMeas?.shapes || { slim: true, athletic: true, heavy: false };
+      const compatibleShapes = rawMeas?.shapes || { slim: true, regular: true, athletic: true, heavy: false };
 
       if (
         advHeight >= minH &&
         advHeight <= maxH &&
         advWeight >= minW &&
         advWeight <= maxW &&
-        compatibleShapes[advShape] === true
+        (compatibleShapes[advShape] === true || compatibleShapes[advShape] === undefined)
       ) {
         bestMatchSizeId = guide.size_id;
         break;
@@ -152,7 +193,68 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       }
     }
 
-    // Default sizing fallback if out of bounds or no active guide matches
+    // Nominal Dimensions Reference
+    const getNominalDimensions = (sizeName: string) => {
+      const name = sizeName.toUpperCase().trim();
+      if (name.includes('XS') || name === '36' || name === '۳۶') {
+        return { chest: 85, waist: 72, hip: 88, shoulder: 39 };
+      }
+      if (name.includes('XXXL') || name === '46' || name === '۴۶') {
+        return { chest: 115, waist: 104, hip: 118, shoulder: 49 };
+      }
+      if (name.includes('XXL') || name === '44' || name === '۴۴') {
+        return { chest: 110, waist: 98, hip: 112, shoulder: 47 };
+      }
+      if (name.includes('XL') || name === '42' || name === '۴۲') {
+        return { chest: 105, waist: 92, hip: 106, shoulder: 45 };
+      }
+      if (name.includes('L') || name === '40' || name === '۴۰') {
+        return { chest: 100, waist: 86, hip: 101, shoulder: 43 };
+      }
+      if (name.includes('M') || name === '38' || name === '۳۸') {
+        return { chest: 94, waist: 80, hip: 96, shoulder: 41 };
+      }
+      if (name.includes('S') || name === '37' || name === '۳۷') {
+        return { chest: 89, waist: 75, hip: 91, shoulder: 40 };
+      }
+      return { chest: 95, waist: 82, hip: 97, shoulder: 42 };
+    };
+
+    // Step B: Multi-criteria nearest-fit matching for Precision Mode
+    let bestPrecisionSize = '';
+    let minDiffScore = 999999;
+    
+    for (const sz of sizes) {
+      const nominal = getNominalDimensions(sz.name);
+      const cDiff = advChest - nominal.chest;
+      const wDiff = advWaist - nominal.waist;
+      const hDiff = advHip - nominal.hip;
+      const sDiff = advShoulder - nominal.shoulder;
+      
+      const tightPenalty = (cDiff >= -2 ? 0 : Math.abs(cDiff) * 3) + 
+                            (wDiff >= -3 ? 0 : Math.abs(wDiff) * 2) + 
+                            (hDiff >= -2 ? 0 : Math.abs(hDiff) * 2) +
+                            (sDiff >= -1 ? 0 : Math.abs(sDiff) * 4);
+      
+      const loosePenalty = (cDiff < 0 ? 0 : cDiff * 1.5) +
+                             (wDiff < 0 ? 0 : wDiff * 1.0) +
+                             (hDiff < 0 ? 0 : hDiff * 1.0) +
+                             (sDiff < 0 ? 0 : sDiff * 2.0);
+                             
+      const totalScore = tightPenalty + loosePenalty;
+      if (totalScore < minDiffScore) {
+        minDiffScore = totalScore;
+        bestPrecisionSize = sz.name;
+      }
+    }
+
+    if (isPrecisionMode && bestPrecisionSize) {
+      theorizedSize = bestPrecisionSize;
+    } else if (!theorizedSize && bestPrecisionSize) {
+      theorizedSize = bestPrecisionSize;
+    }
+
+    // Default Fallback
     if (!theorizedSize) {
       if (advHeight < 165) theorizedSize = 'S';
       else if (advHeight < 178) theorizedSize = 'M';
@@ -160,8 +262,27 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       else theorizedSize = 'XL';
     }
 
+    // Generate specific fit hint based on nominal dimensions of matched size
+    const nominal = getNominalDimensions(theorizedSize);
+    const chestDiff = advChest - nominal.chest;
+    const waistDiff = advWaist - nominal.waist;
+    const hipDiff = advHip - nominal.hip;
+    const shoulderDiff = advShoulder - nominal.shoulder;
+
+    let fitHint = '';
+    if (Math.abs(chestDiff) <= 2) {
+      fitHint = isRtl ? "انطباق بی‌نظیر روی سینه" : "Perfect Fit on Chest";
+    } else if (Math.abs(waistDiff) <= 2) {
+      fitHint = isRtl ? "کمر کاملاً اندازه و استاندارد" : "Perfect Fit on Waist";
+    } else if (Math.abs(shoulderDiff) <= 1) {
+      fitHint = isRtl ? "سرشانه‌های دقیق و متناسب" : "Perfect Fit on Shoulders";
+    } else if (Math.abs(hipDiff) <= 2) {
+      fitHint = isRtl ? "ایده‌آل برای دور باسن" : "Perfect Fit on Hips";
+    } else {
+      fitHint = isRtl ? "تن‌خور نسبتاً آزاد و متبوع" : "Comfortable Relaxed Fit";
+    }
+
     // Now cross-reference with our ACTIVE inventory matrix
-    // Find if the recommended size is currently available in stock (any color)
     const activeInventoryInSize = inventory.filter(
       item => {
         const sizeObj = sizes.find(s => s.id === item.size_id);
@@ -173,19 +294,13 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
 
     if (activeInventoryInSize.length > 0) {
       setAdvisorIsAvailable(true);
-      
-      const availableColors = activeInventoryInSize.map(item => {
-        const colObj = colors.find(c => c.id === item.color_id);
-        return isRtl ? colObj?.name_fa : colObj?.name_en;
-      }).filter(Boolean).join('، ');
-
       setAdvisorMessage(
         isRtl 
-          ? `سایز ${theorizedSize} ایده‌آل شماست و هم‌اکنون موجود است!`
-          : `Size ${theorizedSize} fits you perfectly and is currently in stock!`
+          ? `سایز پیشنهادی شما ${theorizedSize} است (${fitHint}) و هم‌اکنون در انبار موجود است!`
+          : `Size ${theorizedSize} is recommended (${fitHint}) and is currently in stock!`
       );
 
-      // Auto-select the size in the variant picker to help buyer checkout!
+      // Auto-select the size in the variant picker to help buyer checkout
       const matchSizeObj = sizes.find(s => s.name === theorizedSize);
       if (matchSizeObj) {
         setSelectedSize(matchSizeObj);
@@ -201,14 +316,14 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       if (allInStockSizes.length > 0) {
         setAdvisorMessage(
           isRtl
-            ? `اندازه علمی شما ${theorizedSize} است، اما متاسفانه تمام شده. سایر سایزهای موجود: ${Array.from(new Set(allInStockSizes)).join(', ')}`
-            : `Your calculated size is ${theorizedSize}, but it is out of stock. Alternative sizes in stock: ${Array.from(new Set(allInStockSizes)).join(', ')}`
+            ? `اندازه دقیق بدنی شما ${theorizedSize} است (${fitHint}) اما متاسفانه ناموجود است. سایزهای جایگزین موجود در انبار: ${Array.from(new Set(allInStockSizes)).join(', ')}`
+            : `Your physical match is ${theorizedSize} (${fitHint}), but it is currently out of stock. Alternative sizes in stock: ${Array.from(new Set(allInStockSizes)).join(', ')}`
         );
       } else {
         setAdvisorMessage(
           isRtl
-            ? `سایز ${theorizedSize} برای شما مناسب است اما متاسفانه کل انبار این محصول در حال حاضر خالی است.`
-            : `Your calculated size is ${theorizedSize}, but this product is completely out of stock.`
+            ? `سایز ایده آل شما ${theorizedSize} است (${fitHint}) اما کل موجودی این کالا در انبار به اتمام رسیده است.`
+            : `Your calculated size is ${theorizedSize} (${fitHint}), but this product is completely out of stock.`
         );
       }
     }
@@ -431,75 +546,179 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
                   </div>
                   <div>
                     <h3 className="text-sm font-extrabold">{t.size_advisor}</h3>
-                    <p className="text-[10px] text-neutral-400 leading-none mt-0.5">{isRtl ? "برآورد قد و وزن و انطباق با جدول موجودی ماتریس" : "Accurate physical matching using real-time stock sync."}</p>
+                    <p className="text-[10px] text-neutral-400 leading-none mt-0.5">{isRtl ? "سیستم هوشمند دو مرحله‌ای برآورد و انطباق سایز" : "Intelligent 2-Tier matching using real-time sync."}</p>
                   </div>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-6 items-start">
                   
                   {/* Slider fields */}
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
-                        <span>{t.height_cm}</span>
-                        <span className="text-indigo-400 font-extrabold">{advHeight} cm</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="130"
-                        max="220"
-                        value={advHeight}
-                        onChange={(e) => setAdvHeight(Number(e.target.value))}
-                        className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                      />
+                  <div className="space-y-4 font-vazirmatn">
+                    {/* Toggle Mode */}
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-950/20 border border-white/5">
+                      <span className="text-xs font-extrabold text-neutral-300">
+                        {isRtl ? "من اندازه‌های دقیق بدنم را می‌دانم" : "I know my exact measurements"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsPrecisionMode(!isPrecisionMode)}
+                        className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isPrecisionMode ? 'bg-indigo-600' : 'bg-neutral-800'}`}
+                      >
+                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPrecisionMode ? (isRtl ? '-translate-x-5' : 'translate-x-5') : 'translate-x-0'}`} />
+                      </button>
                     </div>
 
-                    <div>
-                      <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
-                        <span>{t.weight_kg}</span>
-                        <span className="text-indigo-400 font-extrabold">{advWeight} kg</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="35"
-                        max="140"
-                        value={advWeight}
-                        onChange={(e) => setAdvWeight(Number(e.target.value))}
-                        className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                      />
-                    </div>
+                    {!isPrecisionMode ? (
+                      /* Tier 1 (Quick Mode) Inputs */
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
+                            <span>{t.height_cm}</span>
+                            <span className="text-indigo-400 font-extrabold">{advHeight} cm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="130"
+                            max="220"
+                            value={advHeight}
+                            onChange={(e) => setAdvHeight(Number(e.target.value))}
+                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-400 mb-2">{t.body_shape}</label>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setAdvShape('slim')}
-                          className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition-all ${advShape === 'slim' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-neutral-800 text-neutral-400'}`}
-                        >
-                          {t.shape_slim}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAdvShape('athletic')}
-                          className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition-all ${advShape === 'athletic' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-neutral-800 text-neutral-400'}`}
-                        >
-                          {t.shape_athletic}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAdvShape('heavy')}
-                          className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition-all ${advShape === 'heavy' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-neutral-800 text-neutral-400'}`}
-                        >
-                          {t.shape_heavy}
-                        </button>
+                        <div>
+                          <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
+                            <span>{t.weight_kg}</span>
+                            <span className="text-indigo-400 font-extrabold">{advWeight} kg</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="35"
+                            max="140"
+                            value={advWeight}
+                            onChange={(e) => setAdvWeight(Number(e.target.value))}
+                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-neutral-400 mb-2">{t.body_shape}</label>
+                          <div className="grid grid-cols-4 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setAdvShape('slim')}
+                              className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${advShape === 'slim' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-neutral-800 text-neutral-400'}`}
+                            >
+                              {t.shape_slim}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAdvShape('regular')}
+                              className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${advShape === 'regular' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-neutral-800 text-neutral-400'}`}
+                            >
+                              {isRtl ? "معمولی" : "Regular"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAdvShape('athletic')}
+                              className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${advShape === 'athletic' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-neutral-800 text-neutral-400'}`}
+                            >
+                              {t.shape_athletic}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAdvShape('heavy')}
+                              className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${advShape === 'heavy' ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' : 'border-neutral-800 text-neutral-400'}`}
+                            >
+                              {t.shape_heavy}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Estimated Dimensions Summary */}
+                        <div className="p-2.5 rounded-lg bg-neutral-950/20 border border-white/5 text-[10px] text-neutral-400 space-y-1">
+                          <p className="font-extrabold text-[11px] text-neutral-300">{isRtl ? "ابعاد تخمینی بدن شما (محاسبه خودکار):" : "Your estimated body dimensions (auto):"}</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                            <div>{isRtl ? `دور سینه: ${advChest} سانتی‌متر` : `Chest/Bust: ${advChest} cm`}</div>
+                            <div>{isRtl ? `دور کمر: ${advWaist} سانتی‌متر` : `Waist: ${advWaist} cm`}</div>
+                            <div>{isRtl ? `دور باسن: ${advHip} سانتی‌متر` : `Hips: ${advHip} cm`}</div>
+                            <div>{isRtl ? `عرض سرشانه: ${advShoulder} سانتی‌متر` : `Shoulders: ${advShoulder} cm`}</div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* Tier 2 (Precision Mode) Inputs */
+                      <div className="space-y-3 p-3 rounded-xl bg-indigo-950/10 border border-indigo-500/10">
+                        <p className="text-[11px] font-extrabold text-indigo-400 mb-2">
+                          {isRtl ? "لطفاً اندازه‌های دقیق دور بدن خود را وارد کنید (سانتی‌متر):" : "Please input your exact body measurements (cm):"}
+                        </p>
+                        
+                        <div>
+                          <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
+                            <span>{isRtl ? "دور سینه" : "Chest / Bust"}</span>
+                            <span className="text-indigo-400 font-extrabold">{advChest} cm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="70"
+                            max="140"
+                            value={advChest}
+                            onChange={(e) => setAdvChest(Number(e.target.value))}
+                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
+                            <span>{isRtl ? "دور کمر" : "Waistline"}</span>
+                            <span className="text-indigo-400 font-extrabold">{advWaist} cm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="60"
+                            max="130"
+                            value={advWaist}
+                            onChange={(e) => setAdvWaist(Number(e.target.value))}
+                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
+                            <span>{isRtl ? "دور باسن" : "Hip Width"}</span>
+                            <span className="text-indigo-400 font-extrabold">{advHip} cm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="70"
+                            max="140"
+                            value={advHip}
+                            onChange={(e) => setAdvHip(Number(e.target.value))}
+                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-xs font-bold text-neutral-400 mb-1">
+                            <span>{isRtl ? "عرض سرشانه" : "Shoulder Width"}</span>
+                            <span className="text-indigo-400 font-extrabold">{advShoulder} cm</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="30"
+                            max="60"
+                            value={advShoulder}
+                            onChange={(e) => setAdvShoulder(Number(e.target.value))}
+                            className="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     <button
                       type="button"
                       onClick={runSizeAdvisorCalculations}
-                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-lg shadow-lg hover:shadow-indigo-500/20 transition-all"
+                      className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-lg shadow-lg hover:shadow-indigo-500/20 transition-all cursor-pointer"
                     >
                       {t.calculate_size}
                     </button>
