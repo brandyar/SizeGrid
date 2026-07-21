@@ -1,8 +1,6 @@
 import { User, Product, InventoryItem, Color, Size, DiffSyncPayload } from './types';
 
-const DIRECTUS_URL = typeof window !== 'undefined' && window.location.protocol === 'http:'
-  ? 'http://directus-v2bpvu6wqgna8fbsczs76x4n.89.42.199.190.sslip.io'
-  : '/api/directus';
+const DIRECTUS_URL = ((import.meta as any).env?.VITE_DIRECTUS_URL as string) || '/api/directus';
 
 // Standard clothing sizes and color fallbacks in case public access is forbidden
 const FALLBACK_COLORS: Color[] = [

@@ -16,8 +16,9 @@ export default defineConfig(() => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       proxy: {
         '/api/directus': {
-          target: 'http://directus-v2bpvu6wqgna8fbsczs76x4n.89.42.199.190.sslip.io',
+          target: 'https://db.tankhor.com',
           changeOrigin: true,
+          secure: true,
           rewrite: (path) => path.replace(/^\/api\/directus/, ''),
         },
       },
