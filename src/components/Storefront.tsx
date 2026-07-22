@@ -58,6 +58,7 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
   const [advWaist, setAdvWaist] = useState<number>(85);
   const [advHip, setAdvHip] = useState<number>(98);
   const [advShoulder, setAdvShoulder] = useState<number>(42);
+  const [advFootLength, setAdvFootLength] = useState<number>(26.5);
   const [calculatedRec, setCalculatedRec] = useState<string>('');
   const [calculatedRecTops, setCalculatedRecTops] = useState<string>('');
   const [calculatedRecBottoms, setCalculatedRecBottoms] = useState<string>('');
@@ -72,6 +73,7 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       let waist = advWeight * 1.22;
       let hip = advWeight * 1.4;
       let shoulder = advHeight * 0.23;
+      let foot = 21 + (advHeight - 150) * 0.12 + (advWeight - 50) * 0.03;
 
       if (advShape === 'slim') {
         chest = advWeight * 1.35 + (advHeight - 100) * 0.1;
@@ -99,6 +101,7 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       setAdvWaist(Math.round(waist));
       setAdvHip(Math.round(hip));
       setAdvShoulder(Math.round(shoulder));
+      setAdvFootLength(Number(foot.toFixed(1)));
     }
   }, [advHeight, advWeight, advShape, isPrecisionMode]);
 
@@ -156,26 +159,27 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
     }
   }, [selectedColor, selectedSize, inventory]);
 
-  // --- Helper to detect category ---
-  const isBottomProduct = (prod: any) => {
-    if (!prod) return false;
+  // --- Helper to detect exact clothing_type_slug ---
+  const getClothingTypeSlug = (prod: any): 'tops' | 'bottoms' | 'footwear' | 'one_piece' | 'accessories' => {
+    if (!prod) return 'tops';
+    if (prod.clothing_type_slug) return prod.clothing_type_slug;
     const cat = (prod.category || '').toLowerCase();
     const nameEn = (prod.name_en || '').toLowerCase();
     const nameFa = (prod.name_fa || '').toLowerCase();
-    return (
-      cat.includes('pant') ||
-      cat.includes('bottom') ||
-      cat.includes('jean') ||
-      cat.includes('شلوار') ||
-      cat.includes('پایین تنه') ||
-      nameEn.includes('pant') ||
-      nameEn.includes('trouser') ||
-      nameEn.includes('jean') ||
-      nameEn.includes('short') ||
-      nameFa.includes('شلوار') ||
-      nameFa.includes('کاپری') ||
-      nameFa.includes('دامن')
-    );
+
+    if (cat.includes('footwear') || cat.includes('shoe') || cat.includes('کفش') || nameEn.includes('shoe') || nameFa.includes('کفش')) {
+      return 'footwear';
+    }
+    if (cat.includes('pant') || cat.includes('bottom') || cat.includes('jean') || cat.includes('شلوار') || nameFa.includes('شلوار')) {
+      return 'bottoms';
+    }
+    if (cat.includes('overall') || cat.includes('one_piece') || cat.includes('سرهمی') || nameFa.includes('سرهمی')) {
+      return 'one_piece';
+    }
+    if (cat.includes('accessories') || cat.includes('کلاه') || cat.includes('جوراب') || nameFa.includes('اکسسوری')) {
+      return 'accessories';
+    }
+    return 'tops';
   };
 
   // --- CLIENT SIZE ADVISOR CALCULATOR ---
@@ -369,43 +373,74 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       }
     }
 
-    // Determine fit hints for both
-    const finalTopSpec = getTopsSpecs(bestTopsSize);
-    let topHint = '';
-    if (advChest >= finalTopSpec.min_chest && advChest <= finalTopSpec.max_chest) {
-      topHint = isRtl ? "انطباق بی‌نظیر روی دور سینه" : "Perfect fit on chest";
-    } else if (advShoulder >= finalTopSpec.min_shoulder && advShoulder <= finalTopSpec.max_shoulder) {
-      topHint = isRtl ? "سرشانه‌های دقیق و متناسب" : "Perfect fit on shoulders";
-    } else {
-      topHint = isRtl ? "تن‌خور مناسب و متبوع" : "Comfortable relaxed fit";
-    }
+    // Footwear calculation
+    let bestShoeSize = '42';
+    if (advFootLength <= 23.5) bestShoeSize = '37';
+    else if (advFootLength <= 24.2) bestShoeSize = '38';
+    else if (advFootLength <= 25.0) bestShoeSize = '39';
+    else if (advFootLength <= 25.8) bestShoeSize = '40';
+    else if (advFootLength <= 26.5) bestShoeSize = '41';
+    else if (advFootLength <= 27.2) bestShoeSize = '42';
+    else if (advFootLength <= 28.0) bestShoeSize = '43';
+    else if (advFootLength <= 28.8) bestShoeSize = '44';
+    else bestShoeSize = '45';
 
-    const finalBotSpec = getBottomsSpecs(bestBottomsSize);
-    let botHint = '';
-    if (advWaist >= finalBotSpec.min_waist && advWaist <= finalBotSpec.max_waist) {
-      botHint = isRtl ? "کمر کاملاً اندازه و استاندارد" : "Perfect fit on waist";
-    } else if (advHip >= finalBotSpec.min_hip && advHip <= finalBotSpec.max_hip) {
-      botHint = isRtl ? "ایده‌آل برای دور باسن" : "Perfect fit on hips";
+    // One-piece calculation
+    let bestOnePieceSize = 'M';
+    if (advHeight < 162 && advChest < 90) bestOnePieceSize = 'S';
+    else if (advHeight < 174 && advChest < 100) bestOnePieceSize = 'M';
+    else if (advHeight < 185 && advChest < 110) bestOnePieceSize = 'L';
+    else bestOnePieceSize = 'XL';
+
+    // Accessories
+    const bestAccessories = isRtl ? "تک‌سایز (Free Size)" : "Free Size";
+
+    // Determine resolved product size based on exact clothingType
+    const clothingType = getClothingTypeSlug(product);
+    let resolvedProductSize = 'M';
+    let fitHint = '';
+
+    if (clothingType === 'tops') {
+      resolvedProductSize = bestTopsSize;
+      fitHint = isRtl ? `اندازه دقیق بر اساس دور سینه ${advChest} cm و عرض سرشانه ${advShoulder} cm` : `Calculated for chest ${advChest} cm`;
+    } else if (clothingType === 'bottoms') {
+      resolvedProductSize = bestBottomsSize;
+      fitHint = isRtl ? `اندازه دقیق بر اساس دور کمر ${advWaist} cm و دور باسن ${advHip} cm` : `Calculated for waist ${advWaist} cm`;
+    } else if (clothingType === 'footwear') {
+      resolvedProductSize = bestShoeSize;
+      fitHint = isRtl ? `بر اساس طول پا ${advFootLength} cm (استاندارد اروپایی EU)` : `Calculated for foot length ${advFootLength} cm`;
+    } else if (clothingType === 'one_piece') {
+      resolvedProductSize = bestOnePieceSize;
+      fitHint = isRtl ? `بر اساس قد ${advHeight} cm و فرم کلی بدن` : `Calculated for total height & body shape`;
     } else {
-      botHint = isRtl ? "سایز کمر آزاد و راحت" : "Relaxed waist fit";
+      resolvedProductSize = bestAccessories;
+      fitHint = isRtl ? "مناسب برای تمام اندازه‌ها (Free Size)" : "Fits all standard dimensions";
     }
 
     // Set states
     setCalculatedRecTops(bestTopsSize);
     setCalculatedRecBottoms(bestBottomsSize);
-    setFitHintTops(topHint);
-    setFitHintBottoms(botHint);
-
-    // Identify which recommended size applies to the current product
-    const bottomProduct = isBottomProduct(product);
-    const resolvedProductSize = bottomProduct ? bestBottomsSize : bestTopsSize;
+    setFitHintTops(fitHint);
+    setFitHintBottoms(fitHint);
     setCalculatedRec(resolvedProductSize);
+
+    if (clothingType === 'accessories') {
+      setAdvisorIsAvailable(true);
+      setAdvisorMessage(
+        isRtl ? "این محصول اکسسوری است و فری‌سایز (تک‌سایز) می‌باشد." : "This item is an accessory and is Free Size."
+      );
+      if (sizes.length > 0) setSelectedSize(sizes[0]);
+      return;
+    }
 
     // Cross-reference with active inventory for this product
     const activeInventoryInSize = inventory.filter(
       item => {
         const sizeObj = sizes.find(s => s.id === item.size_id);
-        return sizeObj?.name === resolvedProductSize && item.stock > 0;
+        if (!sizeObj) return false;
+        const sName = sizeObj.name.toUpperCase().trim();
+        const rName = resolvedProductSize.toUpperCase().trim();
+        return (sName === rName || sName.includes(rName) || rName.includes(sName)) && item.stock > 0;
       }
     );
 
@@ -413,12 +448,16 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       setAdvisorIsAvailable(true);
       setAdvisorMessage(
         isRtl 
-          ? `سایز پیشنهادی برای این محصول (${bottomProduct ? "شلوار/پایین‌تنه" : "پیراهن/بالاتنه"}): سایز ${resolvedProductSize} است (${bottomProduct ? botHint : topHint}) و هم‌اکنون موجود است!`
-          : `Size ${resolvedProductSize} is recommended for this ${bottomProduct ? "bottom" : "top"} item (${bottomProduct ? botHint : topHint}) and is currently in stock!`
+          ? `سایز پیشنهادی برای این محصول: سایز ${resolvedProductSize} است (${fitHint}) و هم‌اکنون موجود است!`
+          : `Size ${resolvedProductSize} is recommended for this product (${fitHint}) and is in stock!`
       );
 
-      // Auto-select the size in the variant picker to help buyer checkout
-      const matchSizeObj = sizes.find(s => s.name === resolvedProductSize);
+      // Auto-select the size in the variant picker
+      const matchSizeObj = sizes.find(s => {
+        const sName = s.name.toUpperCase().trim();
+        const rName = resolvedProductSize.toUpperCase().trim();
+        return sName === rName || sName.includes(rName) || rName.includes(sName);
+      });
       if (matchSizeObj) {
         setSelectedSize(matchSizeObj);
       }
@@ -433,14 +472,14 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
       if (allInStockSizes.length > 0) {
         setAdvisorMessage(
           isRtl
-            ? `اندازه دقیق بدنی شما برای این محصول ${resolvedProductSize} است (${bottomProduct ? botHint : topHint}) اما متاسفانه این سایز ناموجود است. سایزهای موجود: ${Array.from(new Set(allInStockSizes)).join(', ')}`
-            : `Your physical match is ${resolvedProductSize} (${bottomProduct ? botHint : topHint}), but it is currently out of stock. Alternative sizes in stock: ${Array.from(new Set(allInStockSizes)).join(', ')}`
+            ? `اندازه دقیق بدنی شما برای این محصول ${resolvedProductSize} است (${fitHint}) اما متاسفانه این سایز ناموجود است. سایزهای موجود: ${Array.from(new Set(allInStockSizes)).join(', ')}`
+            : `Your physical match is ${resolvedProductSize} (${fitHint}), but it is currently out of stock. Alternative sizes in stock: ${Array.from(new Set(allInStockSizes)).join(', ')}`
         );
       } else {
         setAdvisorMessage(
           isRtl
-            ? `سایز ایده آل شما ${resolvedProductSize} است (${bottomProduct ? botHint : topHint}) اما کل موجودی این کالا در انبار به اتمام رسیده است.`
-            : `Your calculated size is ${resolvedProductSize} (${bottomProduct ? botHint : topHint}), but this product is completely out of stock.`
+            ? `سایز ایده آل شما ${resolvedProductSize} است (${fitHint}) اما کل موجودی این کالا در انبار به اتمام رسیده است.`
+            : `Your calculated size is ${resolvedProductSize} (${fitHint}), but this product is completely out of stock.`
         );
       }
     }
@@ -841,39 +880,20 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
                     </button>
                   </div>
 
-                  {/* Sizing advisor result box */}
+                  {/* Sizing advisor result box - Single Exact Size Display */}
                   <div className="p-6 rounded-xl bg-neutral-950/30 border border-neutral-800/60 flex flex-col justify-between h-full min-h-[220px]">
                     <div className="text-center mb-4">
-                      <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{isRtl ? "نتایج موتور هوشمند پیشنهاد سایز اختصاصی" : "Intelligent Size Advisor Results"}</span>
+                      <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{isRtl ? "پیشنهاد تک‌سایز دقیق محصول" : "Single Size Match Output"}</span>
                     </div>
                     
                     {calculatedRec ? (
-                      <div className="space-y-4">
-                        {/* Tops and Bottoms separate recommendations columns */}
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Tops card */}
-                          <div className={`p-3 rounded-lg border text-center transition-all ${!isBottomProduct(product) ? 'bg-indigo-500/10 border-indigo-500/30 ring-1 ring-indigo-500/20' : 'bg-neutral-900/40 border-neutral-800/60'}`}>
-                            <span className="block text-[10px] font-extrabold text-neutral-400 mb-1">{isRtl ? "بالاتنه (Tops)" : "Tops Size"}</span>
-                            <span className="block text-3xl font-black text-indigo-400 mb-1">{calculatedRecTops}</span>
-                            <span className="block text-[9px] text-neutral-400 font-medium leading-tight">{fitHintTops}</span>
-                            {!isBottomProduct(product) && (
-                              <span className="inline-block mt-2 px-1.5 py-0.5 rounded text-[8px] bg-indigo-500/25 text-indigo-300 font-bold">
-                                {isRtl ? "سایز این محصول" : "This Item Size"}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Bottoms card */}
-                          <div className={`p-3 rounded-lg border text-center transition-all ${isBottomProduct(product) ? 'bg-indigo-500/10 border-indigo-500/30 ring-1 ring-indigo-500/20' : 'bg-neutral-900/40 border-neutral-800/60'}`}>
-                            <span className="block text-[10px] font-extrabold text-neutral-400 mb-1">{isRtl ? "پایین‌تنه (Bottoms)" : "Bottoms Size"}</span>
-                            <span className="block text-3xl font-black text-indigo-400 mb-1">{calculatedRecBottoms}</span>
-                            <span className="block text-[9px] text-neutral-400 font-medium leading-tight">{fitHintBottoms}</span>
-                            {isBottomProduct(product) && (
-                              <span className="inline-block mt-2 px-1.5 py-0.5 rounded text-[8px] bg-indigo-500/25 text-indigo-300 font-bold">
-                                {isRtl ? "سایز این محصول" : "This Item Size"}
-                              </span>
-                            )}
-                          </div>
+                      <div className="space-y-4 my-auto">
+                        <div className="p-5 bg-gradient-to-b from-indigo-500/15 to-sky-500/10 border border-indigo-500/30 rounded-2xl text-center shadow-xl">
+                          <span className="block text-[11px] font-extrabold text-indigo-400 mb-1 uppercase tracking-wider">
+                            {isRtl ? "سایز دقیق پیشنهادی برای این محصول" : "Recommended Size For This Item"}
+                          </span>
+                          <span className="block text-4xl font-black text-white my-2 tracking-tight">{calculatedRec}</span>
+                          <span className="block text-xs text-indigo-200/80 leading-snug">{fitHintTops}</span>
                         </div>
 
                         {/* Recommendation details & inventory availability message */}

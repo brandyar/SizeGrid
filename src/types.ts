@@ -13,6 +13,23 @@ export interface Color {
   hex_code: string;
 }
 
+export type ClothingTypeSlug = 'tops' | 'bottoms' | 'footwear' | 'one_piece' | 'accessories';
+
+export interface ClothingType {
+  id: number;
+  name: string;
+  slug: ClothingTypeSlug;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  name_fa?: string;
+  slug?: string;
+  system_type?: number | null;
+  user_id?: string | null;
+}
+
 export interface Size {
   id: number;
   name: string;
@@ -47,6 +64,8 @@ export interface Product {
   size_guides?: SizeGuideSchema; // JSON schema parsed in Size Advisor
   size_guide_template_id?: number | string | null; // ID of the template
   category?: string;
+  category_id?: number | null;
+  clothing_type_slug?: ClothingTypeSlug;
   created_by?: string;
 }
 
@@ -68,6 +87,8 @@ export interface SizeGuideTemplateItem {
   max_sleeve?: number;
   min_length?: number;
   max_length?: number;
+  min_foot_length?: number;
+  max_foot_length?: number;
   shapes: {
     slim: boolean;
     regular?: boolean;
@@ -79,6 +100,7 @@ export interface SizeGuideTemplateItem {
 export interface SizeGuideTemplate {
   id: number;
   name: string;
+  clothing_type_slug?: ClothingTypeSlug;
   measurements: SizeGuideTemplateItem[]; // Array of size rules
   user_created?: string;
 }

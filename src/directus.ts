@@ -1,4 +1,4 @@
-import { User, Product, InventoryItem, Color, Size, DiffSyncPayload, SizeGuideTemplate, SizeGuideTemplateItem } from './types';
+import { User, Product, InventoryItem, Color, Size, DiffSyncPayload, SizeGuideTemplate, SizeGuideTemplateItem, ClothingType, Category, ClothingTypeSlug } from './types';
 
 const DIRECTUS_URL = ((import.meta as any).env?.VITE_DIRECTUS_URL as string) || '/api/directus';
 
@@ -141,6 +141,36 @@ class DirectusService {
   }
 
   // --- META COLLECTION SERVICES (Colors & Sizes with Fallbacks) ---
+  async getClothingTypes(): Promise<ClothingType[]> {
+    try {
+      const currentUser = this.getCurrentUser();
+      const headers: Record<string, string> = {};
+      if (currentUser?.token) {
+        headers['Authorization'] = `Bearer ${currentUser.token}`;
+      }
+      const response = await fetch(`${DIRECTUS_URL}/items/clothing_types`, { headers });
+      if (response.ok) {
+        const res = await response.json();
+        if (res?.data && res.data.length > 0) {
+          return res.data.map((ct: any) => ({
+            id: ct.id,
+            name: ct.name,
+            slug: ct.slug as ClothingTypeSlug
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not query clothing_types, using standard defaults", e);
+    }
+    return [
+      { id: 1, name: "بالاتنه (تیشرت، هودی، پیراهن، کت)", slug: "tops" },
+      { id: 2, name: "پایین‌تنه (شلوار، شلوارک، جین، لگ)", slug: "bottoms" },
+      { id: 3, name: "کفش", slug: "footwear" },
+      { id: 4, name: "سرهمی", slug: "one_piece" },
+      { id: 5, name: "اکسسوری", slug: "accessories" }
+    ];
+  }
+
   async getColors(): Promise<Color[]> {
     try {
       const currentUser = this.getCurrentUser();
@@ -167,7 +197,7 @@ class DirectusService {
     return FALLBACK_COLORS;
   }
 
-  async getCategories(): Promise<Array<{ id: number; name: string; name_fa?: string }>> {
+  async getCategories(): Promise<Category[]> {
     try {
       const currentUser = this.getCurrentUser();
       const headers: Record<string, string> = {};
@@ -181,7 +211,10 @@ class DirectusService {
           return res.data.map((c: any) => ({
             id: c.id,
             name: c.name,
-            name_fa: c.name_fa || c.name
+            name_fa: c.name,
+            slug: c.slug,
+            system_type: c.system_type || 1,
+            user_id: c.user_id
           }));
         }
       }
@@ -189,11 +222,53 @@ class DirectusService {
       console.warn("Could not query categories, using defaults", e);
     }
     return [
-      { id: 1, name: "Tops", name_fa: "بالاپوش (تیشرت، پیراهن)" },
-      { id: 2, name: "Outerwear", name_fa: "پوشاک بیرونی (کاپشن، هودی)" },
-      { id: 3, name: "Pants", name_fa: "شلوار و پایین‌پوش" },
-      { id: 4, name: "Clothing", name_fa: "سایر پوشاک" }
+      { id: 1, name: "تیشرت، پیراهن و هودی (بالاتنه)", name_fa: "تیشرت، پیراهن و هودی (بالاتنه)", slug: "tops-shirts", system_type: 1 },
+      { id: 2, name: "شلوار، جین و شلوارک (پایین‌تنه)", name_fa: "شلوار، جین و شلوارک (پایین‌تنه)", slug: "bottoms-pants", system_type: 2 },
+      { id: 3, name: "کفش و کتانی (کفش)", name_fa: "کفش و کتانی (کفش)", slug: "footwear-shoes", system_type: 3 },
+      { id: 4, name: "سرهمی و اورال (سرهمی)", name_fa: "سرهمی و اورال (سرهمی)", slug: "onepiece-overall", system_type: 4 },
+      { id: 5, name: "کلاه، کیف و اکسسوری", name_fa: "کلاه، کیف و اکسسوری", slug: "accessories", system_type: 5 }
     ];
+  }
+
+  async createCategory(name: string, system_type: number): Promise<Category> {
+    const currentUser = this.getCurrentUser();
+    const payload = {
+      name,
+      slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      system_type,
+      user_id: currentUser?.id || null
+    };
+    try {
+      if (currentUser?.token) {
+        const response = await fetch(`${DIRECTUS_URL}/items/categories`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentUser.token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (response.ok) {
+          const res = await response.json();
+          return {
+            id: res.data.id,
+            name: res.data.name,
+            name_fa: res.data.name,
+            slug: res.data.slug,
+            system_type: res.data.system_type,
+            user_id: res.data.user_id
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("Directus category creation error", e);
+    }
+    return {
+      id: Math.floor(Math.random() * 1000) + 100,
+      name,
+      name_fa: name,
+      system_type
+    };
   }
 
   async getSizes(): Promise<Size[]> {
@@ -333,7 +408,12 @@ class DirectusService {
       'Authorization': `Bearer ${currentUser.token}`
     };
 
-    const response = await fetch(`${DIRECTUS_URL}/items/products?filter[user_id][_eq]=${currentUser.id}`, { headers });
+    const [response, categories, clothingTypes] = await Promise.all([
+      fetch(`${DIRECTUS_URL}/items/products?filter[user_id][_eq]=${currentUser.id}`, { headers }),
+      this.getCategories().catch(() => []),
+      this.getClothingTypes().catch(() => [])
+    ]);
+
     if (!response.ok) {
       let extra = '';
       try {
@@ -348,18 +428,37 @@ class DirectusService {
     const res = await response.json();
     const list = res.data || [];
 
-    return list.map((rawProduct: any) => ({
-      id: rawProduct.id,
-      name_fa: rawProduct.title,
-      name_en: rawProduct.title,
-      description_fa: rawProduct.description || '',
-      description_en: rawProduct.description || '',
-      image: rawProduct.main_image ? `${DIRECTUS_URL}/assets/${rawProduct.main_image}` : '',
-      base_price: 500000, // Calculated dynamically from inventory if possible
-      category: rawProduct.category_id === 1 ? "Tops" : rawProduct.category_id === 2 ? "Outerwear" : rawProduct.category_id === 3 ? "Pants" : "Clothing",
-      size_guide_template_id: rawProduct.size_guide_template_id || null,
-      created_by: rawProduct.user_id
-    }));
+    return list.map((rawProduct: any) => {
+      const catObj = categories.find(c => c.id === rawProduct.category_id);
+      let clothingTypeSlug: ClothingTypeSlug = 'tops';
+      if (catObj?.system_type) {
+        const ct = clothingTypes.find(t => t.id === catObj.system_type);
+        if (ct?.slug) clothingTypeSlug = ct.slug;
+      } else if (rawProduct.category_id === 2) {
+        clothingTypeSlug = 'bottoms';
+      } else if (rawProduct.category_id === 3) {
+        clothingTypeSlug = 'footwear';
+      } else if (rawProduct.category_id === 4) {
+        clothingTypeSlug = 'one_piece';
+      } else if (rawProduct.category_id === 5) {
+        clothingTypeSlug = 'accessories';
+      }
+
+      return {
+        id: rawProduct.id,
+        name_fa: rawProduct.title,
+        name_en: rawProduct.title,
+        description_fa: rawProduct.description || '',
+        description_en: rawProduct.description || '',
+        image: rawProduct.main_image ? `${DIRECTUS_URL}/assets/${rawProduct.main_image}` : '',
+        base_price: 500000,
+        category: catObj?.name || (rawProduct.category_id === 1 ? "بالاتنه" : rawProduct.category_id === 2 ? "پایین‌تنه" : rawProduct.category_id === 3 ? "کفش" : "سایر"),
+        category_id: rawProduct.category_id || null,
+        clothing_type_slug: clothingTypeSlug,
+        size_guide_template_id: rawProduct.size_guide_template_id || null,
+        created_by: rawProduct.user_id
+      };
+    });
   }
 
   async addProduct(productData: Omit<Product, 'id' | 'created_by'>): Promise<Product> {
@@ -782,22 +881,53 @@ class DirectusService {
     return [
       {
         id: 101,
-        name: "تی‌شرت لش (Oversized Tees)",
+        name: "تی‌شرت و پیراهن استاندارد (Tops)",
+        clothing_type_slug: "tops",
         measurements: [
-          { size_id: 1, min_height: 155, max_height: 168, min_weight: 50, max_weight: 65, shapes: { slim: true, athletic: true, heavy: false } },
-          { size_id: 2, min_height: 165, max_height: 178, min_weight: 60, max_weight: 78, shapes: { slim: true, athletic: true, heavy: true } },
-          { size_id: 3, min_height: 175, max_height: 188, min_weight: 75, max_weight: 95, shapes: { slim: true, athletic: true, heavy: true } },
-          { size_id: 4, min_height: 185, max_height: 200, min_weight: 90, max_weight: 115, shapes: { slim: false, athletic: true, heavy: true } }
+          { size_id: 1, min_height: 155, max_height: 168, min_weight: 50, max_weight: 65, min_chest: 84, max_chest: 92, min_shoulder: 38, max_shoulder: 41, shapes: { slim: true, athletic: true, heavy: false } },
+          { size_id: 2, min_height: 165, max_height: 178, min_weight: 60, max_weight: 78, min_chest: 92, max_chest: 100, min_shoulder: 41, max_shoulder: 44, shapes: { slim: true, athletic: true, heavy: true } },
+          { size_id: 3, min_height: 175, max_height: 188, min_weight: 75, max_weight: 95, min_chest: 100, max_chest: 110, min_shoulder: 44, max_shoulder: 47, shapes: { slim: true, athletic: true, heavy: true } },
+          { size_id: 4, min_height: 185, max_height: 200, min_weight: 90, max_weight: 115, min_chest: 110, max_chest: 122, min_shoulder: 47, max_shoulder: 51, shapes: { slim: false, athletic: true, heavy: true } }
         ]
       },
       {
         id: 102,
-        name: "شلوار جین اسلیم فیت (Slim Fit Jeans)",
+        name: "شلوار و جین اسلیم فیت (Bottoms)",
+        clothing_type_slug: "bottoms",
         measurements: [
-          { size_id: 1, min_height: 150, max_height: 165, min_weight: 45, max_weight: 58, shapes: { slim: true, athletic: true, heavy: false } },
-          { size_id: 2, min_height: 160, max_height: 175, min_weight: 55, max_weight: 70, shapes: { slim: true, athletic: true, heavy: false } },
-          { size_id: 3, min_height: 170, max_height: 185, min_weight: 68, max_weight: 85, shapes: { slim: true, athletic: true, heavy: true } },
-          { size_id: 4, min_height: 180, max_height: 195, min_weight: 82, max_weight: 102, shapes: { slim: false, athletic: true, heavy: true } }
+          { size_id: 1, min_height: 150, max_height: 165, min_weight: 45, max_weight: 58, min_waist: 68, max_waist: 76, min_hip: 88, max_hip: 94, shapes: { slim: true, athletic: true, heavy: false } },
+          { size_id: 2, min_height: 160, max_height: 175, min_weight: 55, max_weight: 70, min_waist: 76, max_waist: 84, min_hip: 94, max_hip: 102, shapes: { slim: true, athletic: true, heavy: false } },
+          { size_id: 3, min_height: 170, max_height: 185, min_weight: 68, max_weight: 85, min_waist: 84, max_waist: 92, min_hip: 102, max_hip: 110, shapes: { slim: true, athletic: true, heavy: true } },
+          { size_id: 4, min_height: 180, max_height: 195, min_weight: 82, max_weight: 102, min_waist: 92, max_waist: 102, min_hip: 110, max_hip: 120, shapes: { slim: false, athletic: true, heavy: true } }
+        ]
+      },
+      {
+        id: 103,
+        name: "کفش و کتانی مردانه/زنانه (Footwear)",
+        clothing_type_slug: "footwear",
+        measurements: [
+          { size_id: 1, min_height: 150, max_height: 165, min_weight: 45, max_weight: 60, min_foot_length: 23.5, max_foot_length: 24.5, shapes: { slim: true, athletic: true, heavy: true } },
+          { size_id: 2, min_height: 160, max_height: 175, min_weight: 55, max_weight: 72, min_foot_length: 24.5, max_foot_length: 25.5, shapes: { slim: true, athletic: true, heavy: true } },
+          { size_id: 3, min_height: 170, max_height: 185, min_weight: 65, max_weight: 88, min_foot_length: 25.5, max_foot_length: 27.0, shapes: { slim: true, athletic: true, heavy: true } },
+          { size_id: 4, min_height: 180, max_height: 198, min_weight: 80, max_weight: 105, min_foot_length: 27.0, max_foot_length: 28.5, shapes: { slim: true, athletic: true, heavy: true } }
+        ]
+      },
+      {
+        id: 104,
+        name: "سرهمی و اورال کامل (One-piece)",
+        clothing_type_slug: "one_piece",
+        measurements: [
+          { size_id: 1, min_height: 155, max_height: 168, min_weight: 48, max_weight: 62, min_chest: 82, max_chest: 90, min_waist: 66, max_waist: 74, min_hip: 88, max_hip: 96, shapes: { slim: true, athletic: true, heavy: false } },
+          { size_id: 2, min_height: 165, max_height: 178, min_weight: 60, max_weight: 75, min_chest: 90, max_chest: 98, min_waist: 74, max_waist: 82, min_hip: 96, max_hip: 104, shapes: { slim: true, athletic: true, heavy: true } },
+          { size_id: 3, min_height: 175, max_height: 188, min_weight: 72, max_weight: 90, min_chest: 98, max_chest: 108, min_waist: 82, max_waist: 92, min_hip: 104, max_hip: 112, shapes: { slim: true, athletic: true, heavy: true } }
+        ]
+      },
+      {
+        id: 105,
+        name: "کلاه و اکسسوری تک‌سایز (Accessories)",
+        clothing_type_slug: "accessories",
+        measurements: [
+          { size_id: 2, min_height: 140, max_height: 210, min_weight: 40, max_weight: 130, shapes: { slim: true, athletic: true, heavy: true } }
         ]
       }
     ];
@@ -1021,12 +1151,31 @@ class DirectusService {
 
   async getProductForStorefront(productId: number): Promise<{ product: Product; inventory: InventoryItem[]; colors: Color[]; sizes: Size[]; sizeGuides: any[] } | null> {
     try {
-      const response = await fetch(`${DIRECTUS_URL}/items/products/${productId}`);
+      const [response, categories, clothingTypes] = await Promise.all([
+        fetch(`${DIRECTUS_URL}/items/products/${productId}`),
+        this.getCategories().catch(() => []),
+        this.getClothingTypes().catch(() => [])
+      ]);
       if (!response.ok) return null;
 
       const res = await response.json();
       const rawProduct = res.data;
       if (!rawProduct) return null;
+
+      const catObj = categories.find(c => c.id === rawProduct.category_id);
+      let clothingTypeSlug: ClothingTypeSlug = 'tops';
+      if (catObj?.system_type) {
+        const ct = clothingTypes.find(t => t.id === catObj.system_type);
+        if (ct?.slug) clothingTypeSlug = ct.slug;
+      } else if (rawProduct.category_id === 2) {
+        clothingTypeSlug = 'bottoms';
+      } else if (rawProduct.category_id === 3) {
+        clothingTypeSlug = 'footwear';
+      } else if (rawProduct.category_id === 4) {
+        clothingTypeSlug = 'one_piece';
+      } else if (rawProduct.category_id === 5) {
+        clothingTypeSlug = 'accessories';
+      }
 
       const product: Product = {
         id: rawProduct.id,
@@ -1036,7 +1185,9 @@ class DirectusService {
         description_en: rawProduct.description || '',
         image: rawProduct.main_image ? `${DIRECTUS_URL}/assets/${rawProduct.main_image}` : '',
         base_price: 500000,
-        category: rawProduct.category_id === 1 ? "Tops" : rawProduct.category_id === 2 ? "Outerwear" : rawProduct.category_id === 3 ? "Pants" : "Clothing",
+        category: catObj?.name || (rawProduct.category_id === 1 ? "بالاتنه" : rawProduct.category_id === 2 ? "پایین‌تنه" : rawProduct.category_id === 3 ? "کفش" : "سایر"),
+        category_id: rawProduct.category_id || null,
+        clothing_type_slug: clothingTypeSlug,
         size_guide_template_id: rawProduct.size_guide_template_id || null,
         created_by: rawProduct.user_id
       };
