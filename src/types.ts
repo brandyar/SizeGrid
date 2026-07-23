@@ -27,6 +27,7 @@ export interface Category {
   name_fa?: string;
   slug?: string;
   system_type?: number | null;
+  clothing_type_slug?: ClothingTypeSlug;
   user_id?: string | null;
 }
 

@@ -203,7 +203,10 @@ class DirectusService {
       2: 'bottoms',
       3: 'footwear',
       4: 'one_piece',
-      5: 'accessories'
+      5: 'accessories',
+      7: 'footwear',
+      8: 'one_piece',
+      9: 'accessories'
     };
     try {
       const currentUser = this.getCurrentUser();
@@ -216,14 +219,14 @@ class DirectusService {
         const res = await response.json();
         if (res?.data && res.data.length > 0) {
           return res.data.map((c: any) => {
-            const sysType = Number(c.system_type) || 1;
+            const sysType = Number(c.system_type || c.id) || 1;
             return {
               id: c.id,
               name: c.name,
               name_fa: c.name,
               slug: c.slug,
               system_type: sysType,
-              clothing_type_slug: (c.clothing_type_slug as ClothingTypeSlug) || systemTypeToSlug[sysType] || 'tops',
+              clothing_type_slug: (c.clothing_type_slug as ClothingTypeSlug) || systemTypeToSlug[sysType] || systemTypeToSlug[Number(c.id)] || 'tops',
               user_id: c.user_id
             };
           });
@@ -233,11 +236,11 @@ class DirectusService {
       console.warn("Could not query categories, using defaults", e);
     }
     return [
-      { id: 1, name: "تیشرت، پیراهن و هودی (بالاتنه)", name_fa: "تیشرت، پیراهن و هودی (بالاتنه)", slug: "tops-shirts", system_type: 1, clothing_type_slug: 'tops' },
-      { id: 2, name: "شلوار، جین و شلوارک (پایین‌تنه)", name_fa: "شلوار، جین و شلوارک (پایین‌تنه)", slug: "bottoms-pants", system_type: 2, clothing_type_slug: 'bottoms' },
-      { id: 3, name: "کفش و کتانی (کفش)", name_fa: "کفش و کتانی (کفش)", slug: "footwear-shoes", system_type: 3, clothing_type_slug: 'footwear' },
-      { id: 4, name: "سرهمی و اورال (سرهمی)", name_fa: "سرهمی و اورال (سرهمی)", slug: "onepiece-overall", system_type: 4, clothing_type_slug: 'one_piece' },
-      { id: 5, name: "کلاه، کیف و اکسسوری", name_fa: "کلاه، کیف و اکسسوری", slug: "accessories", system_type: 5, clothing_type_slug: 'accessories' }
+      { id: 1, name: "تیشرت، پیراهن و هودی (بالاتنه)", name_fa: "تیشرت، پیراهن و هودی (بالاتنه)", slug: "tops", system_type: 1, clothing_type_slug: 'tops' },
+      { id: 2, name: "شلوار، جین و شلوارک (پایین‌تنه)", name_fa: "شلوار، جین و شلوارک (پایین‌تنه)", slug: "bottoms", system_type: 2, clothing_type_slug: 'bottoms' },
+      { id: 7, name: "کفش و کتانی (کفش)", name_fa: "کفش و کتانی (کفش)", slug: "footwear", system_type: 7, clothing_type_slug: 'footwear' },
+      { id: 8, name: "سرهمی و اورال (سرهمی)", name_fa: "سرهمی و اورال (سرهمی)", slug: "one_piece", system_type: 8, clothing_type_slug: 'one_piece' },
+      { id: 9, name: "کلاه، کیف و اکسسوری", name_fa: "کلاه، کیف و اکسسوری", slug: "accessories", system_type: 9, clothing_type_slug: 'accessories' }
     ];
   }
 

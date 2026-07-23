@@ -155,7 +155,10 @@ export const getClothingTypeFromCategory = (catNameOrIdOrSlug?: string | number,
           2: 'bottoms',
           3: 'footwear',
           4: 'one_piece',
-          5: 'accessories'
+          5: 'accessories',
+          7: 'footwear',
+          8: 'one_piece',
+          9: 'accessories'
         };
         if (sysMap[Number(matched.system_type)]) {
           return sysMap[Number(matched.system_type)];
