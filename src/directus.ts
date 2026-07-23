@@ -198,6 +198,13 @@ class DirectusService {
   }
 
   async getCategories(): Promise<Category[]> {
+    const systemTypeToSlug: Record<number, ClothingTypeSlug> = {
+      1: 'tops',
+      2: 'bottoms',
+      3: 'footwear',
+      4: 'one_piece',
+      5: 'accessories'
+    };
     try {
       const currentUser = this.getCurrentUser();
       const headers: Record<string, string> = {};
@@ -208,25 +215,29 @@ class DirectusService {
       if (response.ok) {
         const res = await response.json();
         if (res?.data && res.data.length > 0) {
-          return res.data.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            name_fa: c.name,
-            slug: c.slug,
-            system_type: c.system_type || 1,
-            user_id: c.user_id
-          }));
+          return res.data.map((c: any) => {
+            const sysType = Number(c.system_type) || 1;
+            return {
+              id: c.id,
+              name: c.name,
+              name_fa: c.name,
+              slug: c.slug,
+              system_type: sysType,
+              clothing_type_slug: (c.clothing_type_slug as ClothingTypeSlug) || systemTypeToSlug[sysType] || 'tops',
+              user_id: c.user_id
+            };
+          });
         }
       }
     } catch (e) {
       console.warn("Could not query categories, using defaults", e);
     }
     return [
-      { id: 1, name: "تیشرت، پیراهن و هودی (بالاتنه)", name_fa: "تیشرت، پیراهن و هودی (بالاتنه)", slug: "tops-shirts", system_type: 1 },
-      { id: 2, name: "شلوار، جین و شلوارک (پایین‌تنه)", name_fa: "شلوار، جین و شلوارک (پایین‌تنه)", slug: "bottoms-pants", system_type: 2 },
-      { id: 3, name: "کفش و کتانی (کفش)", name_fa: "کفش و کتانی (کفش)", slug: "footwear-shoes", system_type: 3 },
-      { id: 4, name: "سرهمی و اورال (سرهمی)", name_fa: "سرهمی و اورال (سرهمی)", slug: "onepiece-overall", system_type: 4 },
-      { id: 5, name: "کلاه، کیف و اکسسوری", name_fa: "کلاه، کیف و اکسسوری", slug: "accessories", system_type: 5 }
+      { id: 1, name: "تیشرت، پیراهن و هودی (بالاتنه)", name_fa: "تیشرت، پیراهن و هودی (بالاتنه)", slug: "tops-shirts", system_type: 1, clothing_type_slug: 'tops' },
+      { id: 2, name: "شلوار، جین و شلوارک (پایین‌تنه)", name_fa: "شلوار، جین و شلوارک (پایین‌تنه)", slug: "bottoms-pants", system_type: 2, clothing_type_slug: 'bottoms' },
+      { id: 3, name: "کفش و کتانی (کفش)", name_fa: "کفش و کتانی (کفش)", slug: "footwear-shoes", system_type: 3, clothing_type_slug: 'footwear' },
+      { id: 4, name: "سرهمی و اورال (سرهمی)", name_fa: "سرهمی و اورال (سرهمی)", slug: "onepiece-overall", system_type: 4, clothing_type_slug: 'one_piece' },
+      { id: 5, name: "کلاه، کیف و اکسسوری", name_fa: "کلاه، کیف و اکسسوری", slug: "accessories", system_type: 5, clothing_type_slug: 'accessories' }
     ];
   }
 
@@ -472,12 +483,30 @@ class DirectusService {
       main_image = parts[parts.length - 1];
     }
 
+    // Resolve category_id accurately from categories list
+    let resolvedCategoryId: number = 1;
+    if (productData.category_id) {
+      resolvedCategoryId = Number(productData.category_id);
+    } else if (productData.category) {
+      const categories = await this.getCategories().catch(() => []);
+      const searchStr = String(productData.category).trim();
+      const matched = categories.find(c => 
+        String(c.id) === searchStr || 
+        c.name === searchStr || 
+        c.name_fa === searchStr || 
+        c.slug === searchStr
+      );
+      if (matched) {
+        resolvedCategoryId = matched.id;
+      }
+    }
+
     const payload = {
       user_id: currentUser.id,
       status: "published",
       title: productData.name_fa || productData.name_en,
       description: productData.description_fa || productData.description_en,
-      category_id: productData.category === "Tops" ? 1 : productData.category === "Outerwear" ? 2 : productData.category === "Pants" ? 3 : 4,
+      category_id: resolvedCategoryId,
       main_image: main_image,
       size_guide_template_id: productData.size_guide_template_id || null
     };
@@ -498,6 +527,9 @@ class DirectusService {
     const res = await response.json();
     const raw = res.data;
 
+    const categories = await this.getCategories().catch(() => []);
+    const catObj = categories.find(c => c.id === raw.category_id);
+
     return {
       id: raw.id,
       name_fa: raw.title,
@@ -506,7 +538,9 @@ class DirectusService {
       description_en: raw.description,
       image: raw.main_image ? `${DIRECTUS_URL}/assets/${raw.main_image}` : '',
       base_price: Number(productData.base_price || 500000),
-      category: productData.category,
+      category: catObj?.name || productData.category || "تیشرت، پیراهن و هودی (بالاتنه)",
+      category_id: raw.category_id || resolvedCategoryId,
+      clothing_type_slug: catObj?.clothing_type_slug || 'tops',
       size_guide_template_id: raw.size_guide_template_id || null,
       created_by: raw.user_id
     };
@@ -534,9 +568,23 @@ class DirectusService {
     if (productData.description_fa !== undefined || productData.description_en !== undefined) {
       payload.description = productData.description_fa || productData.description_en;
     }
-    if (productData.category !== undefined) {
-      payload.category_id = productData.category === "Tops" ? 1 : productData.category === "Outerwear" ? 2 : productData.category === "Pants" ? 3 : 4;
+
+    if (productData.category_id !== undefined && productData.category_id !== null) {
+      payload.category_id = Number(productData.category_id);
+    } else if (productData.category !== undefined) {
+      const categories = await this.getCategories().catch(() => []);
+      const searchStr = String(productData.category).trim();
+      const matched = categories.find(c => 
+        String(c.id) === searchStr || 
+        c.name === searchStr || 
+        c.name_fa === searchStr || 
+        c.slug === searchStr
+      );
+      if (matched) {
+        payload.category_id = matched.id;
+      }
     }
+
     if (main_image !== undefined) {
       payload.main_image = main_image;
     }
@@ -560,6 +608,9 @@ class DirectusService {
     const res = await response.json();
     const raw = res.data;
 
+    const categories = await this.getCategories().catch(() => []);
+    const catObj = categories.find(c => c.id === raw.category_id);
+
     return {
       id: raw.id,
       name_fa: raw.title,
@@ -568,7 +619,9 @@ class DirectusService {
       description_en: raw.description,
       image: raw.main_image ? `${DIRECTUS_URL}/assets/${raw.main_image}` : '',
       base_price: Number(productData.base_price || 500000),
-      category: productData.category,
+      category: catObj?.name || productData.category || "تیشرت، پیراهن و هودی (بالاتنه)",
+      category_id: raw.category_id || payload.category_id,
+      clothing_type_slug: catObj?.clothing_type_slug || 'tops',
       size_guide_template_id: raw.size_guide_template_id || null,
       created_by: raw.user_id
     };

@@ -136,19 +136,39 @@ const getDefaultMeasurementsForSize = (sizeName: string) => {
   };
 };
 
-export const getClothingTypeFromCategory = (catNameOrSlug?: string, categories?: any[]): ClothingTypeSlug => {
-  if (!catNameOrSlug) return 'tops';
+export const getClothingTypeFromCategory = (catNameOrIdOrSlug?: string | number, categories?: any[]): ClothingTypeSlug => {
+  if (!catNameOrIdOrSlug) return 'tops';
+  const searchStr = String(catNameOrIdOrSlug).trim();
+
   if (categories && categories.length > 0) {
-    const matched = categories.find(c => c.name === catNameOrSlug || c.name_fa === catNameOrSlug || c.slug === catNameOrSlug);
-    if (matched && matched.clothing_type_slug) {
-      return matched.clothing_type_slug;
+    const matched = categories.find(c => 
+      String(c.id) === searchStr || 
+      c.name === searchStr || 
+      c.name_fa === searchStr || 
+      c.slug === searchStr
+    );
+    if (matched) {
+      if (matched.clothing_type_slug) return matched.clothing_type_slug as ClothingTypeSlug;
+      if (matched.system_type) {
+        const sysMap: Record<number, ClothingTypeSlug> = {
+          1: 'tops',
+          2: 'bottoms',
+          3: 'footwear',
+          4: 'one_piece',
+          5: 'accessories'
+        };
+        if (sysMap[Number(matched.system_type)]) {
+          return sysMap[Number(matched.system_type)];
+        }
+      }
     }
   }
-  const lower = catNameOrSlug.toLowerCase();
-  if (lower.includes('کفش') || lower.includes('کتانی') || lower.includes('footwear') || lower.includes('shoe')) return 'footwear';
-  if (lower.includes('شلوار') || lower.includes('شلوارک') || lower.includes('جین') || lower.includes('bottom') || lower.includes('pant')) return 'bottoms';
-  if (lower.includes('سرهمی') || lower.includes('اورال') || lower.includes('one_piece') || lower.includes('overall')) return 'one_piece';
-  if (lower.includes('کلاه') || lower.includes('کیف') || lower.includes('اکسسوری') || lower.includes('accessory')) return 'accessories';
+
+  const lower = searchStr.toLowerCase();
+  if (lower.includes('کفش') || lower.includes('کتانی') || lower.includes('footwear') || lower.includes('shoe') || lower.includes('boots') || lower.includes('sneaker')) return 'footwear';
+  if (lower.includes('شلوار') || lower.includes('شلوارک') || lower.includes('جین') || lower.includes('bottom') || lower.includes('pant') || lower.includes('jean') || lower.includes('shorts')) return 'bottoms';
+  if (lower.includes('سرهمی') || lower.includes('اورال') || lower.includes('one_piece') || lower.includes('overall') || lower.includes('dress') || lower.includes('suit')) return 'one_piece';
+  if (lower.includes('کلاه') || lower.includes('کیف') || lower.includes('اکسسوری') || lower.includes('accessory') || lower.includes('hat') || lower.includes('bag')) return 'accessories';
   return 'tops';
 };
 
@@ -583,13 +603,21 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     setProdFormStatus('saving');
     setError('');
 
+    const matchedCat = categoriesList.find(c => 
+      c.name === prodFormCategory || 
+      c.name_fa === prodFormCategory || 
+      c.slug === prodFormCategory || 
+      String(c.id) === String(prodFormCategory)
+    );
+
     const payload = {
       name_fa: prodFormNameFa,
       name_en: prodFormNameEn,
       description_fa: prodFormDescFa,
       description_en: prodFormDescEn,
       base_price: Number(prodFormBasePrice),
-      category: prodFormCategory,
+      category: matchedCat ? matchedCat.name : prodFormCategory,
+      category_id: matchedCat ? matchedCat.id : undefined,
       image: prodFormImage,
       size_guide_template_id: prodFormTemplateId && prodFormTemplateId !== 'custom' ? Number(prodFormTemplateId) : null
     };
@@ -2868,140 +2896,183 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
 
                                         </div>
 
-                                        {/* Precise clothing body-part measurements */}
-                                        <div className="border-t border-white/5 pt-3 mt-1 grid grid-cols-2 md:grid-cols-6 gap-3">
-                                          {/* Chest */}
-                                          <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "دور سینه:" : "Chest:"}</span>
-                                            <div className="flex items-center gap-1">
-                                              <input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={cell.min_chest ?? ''}
-                                                onChange={(e) => handleTplCellChange('min_chest', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                              <span className="text-neutral-500 text-[10px]">-</span>
-                                              <input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={cell.max_chest ?? ''}
-                                                onChange={(e) => handleTplCellChange('max_chest', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
+                                        {/* Precise clothing body-part measurements based on clothing type */}
+                                        {templateFormClothingType === 'footwear' ? (
+                                          <div className="border-t border-white/5 pt-3 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                              <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "طول پا مناسب (سانتی‌متر):" : "Foot Length (cm):"}</span>
+                                              <div className="flex items-center gap-1">
+                                                <input
+                                                  type="number"
+                                                  step="0.5"
+                                                  placeholder="Min"
+                                                  value={cell.min_foot_length ?? ''}
+                                                  onChange={(e) => handleTplCellChange('min_foot_length', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                  className="w-1/2 px-2 py-1 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                />
+                                                <span className="text-neutral-500 text-[10px]">-</span>
+                                                <input
+                                                  type="number"
+                                                  step="0.5"
+                                                  placeholder="Max"
+                                                  value={cell.max_foot_length ?? ''}
+                                                  onChange={(e) => handleTplCellChange('max_foot_length', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                  className="w-1/2 px-2 py-1 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                />
+                                              </div>
                                             </div>
                                           </div>
+                                        ) : templateFormClothingType === 'accessories' ? (
+                                          <div className="border-t border-white/5 pt-3 mt-1 text-xs text-neutral-500 font-medium italic">
+                                            {isRtl ? "اکسسوری‌ها نیازی به فیلدهای ابعاد بدنی ندارند." : "Accessories do not require specific body measurements."}
+                                          </div>
+                                        ) : (
+                                          <div className="border-t border-white/5 pt-3 mt-1 grid grid-cols-2 md:grid-cols-6 gap-3">
+                                            {/* Chest */}
+                                            {(templateFormClothingType === 'tops' || templateFormClothingType === 'one_piece') && (
+                                              <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "دور سینه:" : "Chest:"}</span>
+                                                <div className="flex items-center gap-1">
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={cell.min_chest ?? ''}
+                                                    onChange={(e) => handleTplCellChange('min_chest', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                  <span className="text-neutral-500 text-[10px]">-</span>
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={cell.max_chest ?? ''}
+                                                    onChange={(e) => handleTplCellChange('max_chest', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
 
-                                          {/* Waist */}
-                                          <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "دور کمر:" : "Waist:"}</span>
-                                            <div className="flex items-center gap-1">
-                                              <input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={cell.min_waist ?? ''}
-                                                onChange={(e) => handleTplCellChange('min_waist', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                              <span className="text-neutral-500 text-[10px]">-</span>
-                                              <input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={cell.max_waist ?? ''}
-                                                onChange={(e) => handleTplCellChange('max_waist', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                            </div>
-                                          </div>
+                                            {/* Waist */}
+                                            {(templateFormClothingType === 'bottoms' || templateFormClothingType === 'one_piece') && (
+                                              <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "دور کمر:" : "Waist:"}</span>
+                                                <div className="flex items-center gap-1">
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={cell.min_waist ?? ''}
+                                                    onChange={(e) => handleTplCellChange('min_waist', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                  <span className="text-neutral-500 text-[10px]">-</span>
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={cell.max_waist ?? ''}
+                                                    onChange={(e) => handleTplCellChange('max_waist', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
 
-                                          {/* Hip */}
-                                          <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "دور باسن:" : "Hips:"}</span>
-                                            <div className="flex items-center gap-1">
-                                              <input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={cell.min_hip ?? ''}
-                                                onChange={(e) => handleTplCellChange('min_hip', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                              <span className="text-neutral-500 text-[10px]">-</span>
-                                              <input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={cell.max_hip ?? ''}
-                                                onChange={(e) => handleTplCellChange('max_hip', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                            </div>
-                                          </div>
+                                            {/* Hip */}
+                                            {(templateFormClothingType === 'bottoms' || templateFormClothingType === 'one_piece') && (
+                                              <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "دور باسن:" : "Hips:"}</span>
+                                                <div className="flex items-center gap-1">
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={cell.min_hip ?? ''}
+                                                    onChange={(e) => handleTplCellChange('min_hip', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                  <span className="text-neutral-500 text-[10px]">-</span>
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={cell.max_hip ?? ''}
+                                                    onChange={(e) => handleTplCellChange('max_hip', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
 
-                                          {/* Shoulder */}
-                                          <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "سرشانه:" : "Shoulder:"}</span>
-                                            <div className="flex items-center gap-1">
-                                              <input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={cell.min_shoulder ?? ''}
-                                                onChange={(e) => handleTplCellChange('min_shoulder', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                              <span className="text-neutral-500 text-[10px]">-</span>
-                                              <input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={cell.max_shoulder ?? ''}
-                                                onChange={(e) => handleTplCellChange('max_shoulder', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                            </div>
-                                          </div>
+                                            {/* Shoulder */}
+                                            {(templateFormClothingType === 'tops' || templateFormClothingType === 'one_piece') && (
+                                              <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "سرشانه:" : "Shoulder:"}</span>
+                                                <div className="flex items-center gap-1">
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={cell.min_shoulder ?? ''}
+                                                    onChange={(e) => handleTplCellChange('min_shoulder', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                  <span className="text-neutral-500 text-[10px]">-</span>
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={cell.max_shoulder ?? ''}
+                                                    onChange={(e) => handleTplCellChange('max_shoulder', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
 
-                                          {/* Sleeve */}
-                                          <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "قد آستین:" : "Sleeve:"}</span>
-                                            <div className="flex items-center gap-1">
-                                              <input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={cell.min_sleeve ?? ''}
-                                                onChange={(e) => handleTplCellChange('min_sleeve', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                              <span className="text-neutral-500 text-[10px]">-</span>
-                                              <input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={cell.max_sleeve ?? ''}
-                                                onChange={(e) => handleTplCellChange('max_sleeve', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                            </div>
-                                          </div>
+                                            {/* Sleeve */}
+                                            {(templateFormClothingType === 'tops' || templateFormClothingType === 'one_piece') && (
+                                              <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "قد آستین:" : "Sleeve:"}</span>
+                                                <div className="flex items-center gap-1">
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={cell.min_sleeve ?? ''}
+                                                    onChange={(e) => handleTplCellChange('min_sleeve', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                  <span className="text-neutral-500 text-[10px]">-</span>
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={cell.max_sleeve ?? ''}
+                                                    onChange={(e) => handleTplCellChange('max_sleeve', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
 
-                                          {/* Length */}
-                                          <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? "قد لباس:" : "Length:"}</span>
-                                            <div className="flex items-center gap-1">
-                                              <input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={cell.min_length ?? ''}
-                                                onChange={(e) => handleTplCellChange('min_length', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                              <span className="text-neutral-500 text-[10px]">-</span>
-                                              <input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={cell.max_length ?? ''}
-                                                onChange={(e) => handleTplCellChange('max_length', null, e.target.value ? Number(e.target.value) : undefined)}
-                                                className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
-                                              />
-                                            </div>
+                                            {/* Length */}
+                                            {(templateFormClothingType === 'tops' || templateFormClothingType === 'bottoms' || templateFormClothingType === 'one_piece') && (
+                                              <div className="space-y-1">
+                                                <span className="text-[10px] font-bold text-neutral-400 block">{isRtl ? (templateFormClothingType === 'bottoms' ? "قد شلوار:" : "قد لباس:") : "Length:"}</span>
+                                                <div className="flex items-center gap-1">
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Min"
+                                                    value={cell.min_length ?? ''}
+                                                    onChange={(e) => handleTplCellChange('min_length', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                  <span className="text-neutral-500 text-[10px]">-</span>
+                                                  <input
+                                                    type="number"
+                                                    placeholder="Max"
+                                                    value={cell.max_length ?? ''}
+                                                    onChange={(e) => handleTplCellChange('max_length', null, e.target.value ? Number(e.target.value) : undefined)}
+                                                    className="w-1/2 px-1 py-0.5 bg-neutral-950 border border-neutral-800 rounded text-center text-xs text-sky-400 font-extrabold"
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
                                           </div>
-                                        </div>
+                                        )}
                                       </div>
                                     ) : (
                                       <div className="flex-1 text-right text-[10px] text-neutral-500 italic">
