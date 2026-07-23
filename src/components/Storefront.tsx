@@ -375,15 +375,40 @@ export default function Storefront({ lang, setLang, darkMode, setDarkMode }: Sto
 
     // Footwear calculation
     let bestShoeSize = '42';
-    if (advFootLength <= 23.5) bestShoeSize = '37';
-    else if (advFootLength <= 24.2) bestShoeSize = '38';
-    else if (advFootLength <= 25.0) bestShoeSize = '39';
-    else if (advFootLength <= 25.8) bestShoeSize = '40';
-    else if (advFootLength <= 26.5) bestShoeSize = '41';
-    else if (advFootLength <= 27.2) bestShoeSize = '42';
-    else if (advFootLength <= 28.0) bestShoeSize = '43';
-    else if (advFootLength <= 28.8) bestShoeSize = '44';
-    else bestShoeSize = '45';
+    let minFootPenalty = 999999;
+    let foundInGuide = false;
+
+    sizes.forEach(sz => {
+      const guide = sizeGuides.find(g => g.size_id === sz.id);
+      if (guide) {
+        const rawMeas = typeof guide.measurements === 'string' ? JSON.parse(guide.measurements) : guide.measurements;
+        if (rawMeas && rawMeas.enabled && rawMeas.min_foot_length && rawMeas.max_foot_length) {
+          foundInGuide = true;
+          let penalty = 0;
+          if (advFootLength < rawMeas.min_foot_length) {
+            penalty += (rawMeas.min_foot_length - advFootLength) * 2;
+          } else if (advFootLength > rawMeas.max_foot_length) {
+            penalty += (advFootLength - rawMeas.max_foot_length) * 5;
+          }
+          if (penalty < minFootPenalty) {
+            minFootPenalty = penalty;
+            bestShoeSize = sz.name;
+          }
+        }
+      }
+    });
+
+    if (!foundInGuide) {
+      if (advFootLength <= 23.5) bestShoeSize = '37';
+      else if (advFootLength <= 24.2) bestShoeSize = '38';
+      else if (advFootLength <= 25.0) bestShoeSize = '39';
+      else if (advFootLength <= 25.8) bestShoeSize = '40';
+      else if (advFootLength <= 26.5) bestShoeSize = '41';
+      else if (advFootLength <= 27.2) bestShoeSize = '42';
+      else if (advFootLength <= 28.0) bestShoeSize = '43';
+      else if (advFootLength <= 28.8) bestShoeSize = '44';
+      else bestShoeSize = '45';
+    }
 
     // One-piece calculation
     let bestOnePieceSize = 'M';

@@ -844,6 +844,7 @@ class DirectusService {
       return list.map((item: any) => ({
         id: item.id,
         name: item.name,
+        clothing_type_slug: item.clothing_type_slug || 'tops',
         measurements: typeof item.measurements === 'string' ? JSON.parse(item.measurements) : (item.measurements || []),
         user_created: item.user_created
       }));
@@ -868,6 +869,7 @@ class DirectusService {
       return {
         id: item.id,
         name: item.name,
+        clothing_type_slug: item.clothing_type_slug || 'tops',
         measurements: typeof item.measurements === 'string' ? JSON.parse(item.measurements) : (item.measurements || []),
         user_created: item.user_created
       };
@@ -933,12 +935,13 @@ class DirectusService {
     ];
   }
 
-  async createSizeGuideTemplate(name: string, measurements: SizeGuideTemplateItem[]): Promise<SizeGuideTemplate> {
+  async createSizeGuideTemplate(name: string, measurements: SizeGuideTemplateItem[], clothing_type_slug?: ClothingTypeSlug): Promise<SizeGuideTemplate> {
     const currentUser = this.getCurrentUser();
     if (!currentUser) throw new Error("Authentication required.");
 
     const payload = {
       name,
+      clothing_type_slug: clothing_type_slug || 'tops',
       measurements: measurements,
       user_created: currentUser.id
     };
@@ -959,6 +962,7 @@ class DirectusService {
         return {
           id: mockId,
           name,
+          clothing_type_slug: clothing_type_slug || 'tops',
           measurements,
           user_created: currentUser.id
         };
@@ -969,6 +973,7 @@ class DirectusService {
       return {
         id: item.id,
         name: item.name,
+        clothing_type_slug: item.clothing_type_slug || clothing_type_slug || 'tops',
         measurements: typeof item.measurements === 'string' ? JSON.parse(item.measurements) : (item.measurements || []),
         user_created: item.user_created
       };
@@ -978,18 +983,20 @@ class DirectusService {
       return {
         id: mockId,
         name,
+        clothing_type_slug: clothing_type_slug || 'tops',
         measurements,
         user_created: currentUser.id
       };
     }
   }
 
-  async updateSizeGuideTemplate(id: number | string, name: string, measurements: SizeGuideTemplateItem[]): Promise<SizeGuideTemplate> {
+  async updateSizeGuideTemplate(id: number | string, name: string, measurements: SizeGuideTemplateItem[], clothing_type_slug?: ClothingTypeSlug): Promise<SizeGuideTemplate> {
     const currentUser = this.getCurrentUser();
     if (!currentUser) throw new Error("Authentication required.");
 
     const payload = {
       name,
+      clothing_type_slug: clothing_type_slug || 'tops',
       measurements: measurements
     };
 
@@ -1008,6 +1015,7 @@ class DirectusService {
         return {
           id: Number(id) || 101,
           name,
+          clothing_type_slug: clothing_type_slug || 'tops',
           measurements,
           user_created: currentUser.id
         };
@@ -1018,6 +1026,7 @@ class DirectusService {
       return {
         id: item.id,
         name: item.name,
+        clothing_type_slug: item.clothing_type_slug || clothing_type_slug || 'tops',
         measurements: typeof item.measurements === 'string' ? JSON.parse(item.measurements) : (item.measurements || []),
         user_created: item.user_created
       };
@@ -1026,6 +1035,7 @@ class DirectusService {
       return {
         id: Number(id) || 101,
         name,
+        clothing_type_slug: clothing_type_slug || 'tops',
         measurements,
         user_created: currentUser.id
       };
