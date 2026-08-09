@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { locales } from '../locales';
 import { DirectusAPI } from '../directus';
 import { useRouter } from './Router';
+import { isDesktopEnv } from '../utils/desktop';
 import { 
   Grid3X3, 
   Lock, 
@@ -44,12 +45,7 @@ export default function DesktopLogin({ lang, setLang, darkMode, setDarkMode }: D
   const [loading, setLoading] = useState(false);
 
   // Is desktop environment detected?
-  const isDesktop = typeof window !== 'undefined' && (
-    '__TAURI__' in window || 
-    window.location.protocol === 'tauri:' || 
-    window.location.protocol === 'asset:' || 
-    window.location.search.includes('desktop=true')
-  );
+  const isDesktop = isDesktopEnv();
 
   // Auto-redirect if user is already logged in with a registered account
   React.useEffect(() => {

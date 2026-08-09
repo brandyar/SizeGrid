@@ -6,18 +6,14 @@ import Dashboard from './components/Dashboard';
 import Storefront from './components/Storefront';
 import { UpdateModal } from './components/UpdateModal';
 import { I18nProvider, useTranslation } from './i18n';
+import { isDesktopEnv } from './utils/desktop';
 
 function AppContent() {
   const { lang, setLang } = useTranslation();
   const [darkMode, setDarkMode] = useState<boolean>(true);
 
-  // Detect native desktop application runtime (Tauri / Electron / desktop standalone)
-  const isDesktop = typeof window !== 'undefined' && (
-    '__TAURI__' in window || 
-    window.location.protocol === 'tauri:' || 
-    window.location.protocol === 'asset:' || 
-    window.location.search.includes('desktop=true')
-  );
+  // Detect native desktop application runtime (Tauri / Electron / Windows WebView2 / macOS WKWebView)
+  const isDesktop = isDesktopEnv();
 
   // Synchronize dark class on document element
   useEffect(() => {

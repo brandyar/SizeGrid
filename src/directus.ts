@@ -1,13 +1,5 @@
 import { User, Product, InventoryItem, Color, Size, DiffSyncPayload, SizeGuideTemplate, SizeGuideTemplateItem, ClothingType, Category, ClothingTypeSlug, Order, OrderItem, CreateOrderInput, OrderStatus } from './types';
-
-const isDesktopEnv = (): boolean => {
-  return typeof window !== 'undefined' && (
-    '__TAURI__' in window || 
-    window.location.protocol === 'tauri:' || 
-    window.location.protocol === 'asset:' || 
-    window.location.search.includes('desktop=true')
-  );
-};
+import { isDesktopEnv } from './utils/desktop';
 
 const getDirectusUrl = (): string => {
   const envUrl = (import.meta as any).env?.VITE_DIRECTUS_URL as string;

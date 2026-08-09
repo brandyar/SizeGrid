@@ -6,6 +6,7 @@ import { useRouter } from './Router';
 import { Product, InventoryItem, Color, Size, SizeGuideTemplate, SizeGuideTemplateItem, ClothingTypeSlug } from '../types';
 import { AppUpdateWidget } from './AppUpdateWidget';
 import { OrdersManager } from './OrdersManager';
+import { isDesktopEnv } from '../utils/desktop';
 import {
   ShoppingCart,
   Grid3X3,
@@ -4035,7 +4036,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                       <button
                         type="button"
                         onClick={() => {
-                          const isDesktop = typeof window !== 'undefined' && ('__TAURI__' in window || window.location.protocol === 'tauri:' || window.location.protocol === 'asset:' || window.location.search.includes('desktop=true'));
+                          const isDesktop = isDesktopEnv();
                           if (!isDesktop) {
                             setError(isRtl ? "در مرورگر وب فقط حالت ابری آنلاین فعال است و امکان سوئیچ به آفلاین وجود ندارد." : "Web browser mode is strictly cloud synced.");
                             setTimeout(() => setError(''), 4000);

@@ -1,7 +1,8 @@
 import { AppVersionInfo, UpdateState, UpdateCheckStatus } from './types';
+import { isDesktopEnv } from './utils/desktop';
 
 // Default base version string
-const BASE_APP_VERSION = '1.0.0';
+const BASE_APP_VERSION = '1.2.0';
 
 // Retrieve stored installed version if present, or fallback to BASE_APP_VERSION
 const getInitialVersion = (): string => {
@@ -93,21 +94,12 @@ class AppUpdateService {
 
   // Check if running in native desktop or native mobile environment
   public isDesktopOrNativeApp(): boolean {
-    if (typeof window === 'undefined') return false;
-    const isTauri = '__TAURI__' in window || window.location.protocol === 'tauri:' || window.location.protocol === 'asset:';
-    const isCapacitor = 'Capacitor' in window;
-    const isElectron = 'electron' in window || navigator.userAgent.toLowerCase().includes('electron');
-    const isDesktopQuery = window.location.search.includes('desktop=true');
-    return isTauri || isCapacitor || isElectron || isDesktopQuery;
+    return isDesktopEnv();
   }
 
   // Check if running in native Tauri desktop environment
   public isTauriDesktop(): boolean {
-    return typeof window !== 'undefined' && (
-      '__TAURI__' in window ||
-      window.location.protocol === 'tauri:' ||
-      window.location.protocol === 'asset:'
-    );
+    return isDesktopEnv();
   }
 
   // Main check for updates method

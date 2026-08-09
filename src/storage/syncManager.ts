@@ -1,20 +1,13 @@
 import { LocalStorageAdapter } from './localAdapter';
+import { SQLiteStorageAdapter } from './sqliteAdapter';
 import { DirectusCloudAdapter } from './cloudAdapter';
 import { IStorageAdapter, StorageMode, SyncStats, SyncQueueItem } from './types';
 import { Product, Category, Size, Color, SizeGuideTemplate, InventoryItem, ClothingTypeSlug, DiffSyncPayload, Order, CreateOrderInput, OrderStatus } from '../types';
 import { DirectusAPI } from '../directus';
-
-const isDesktopEnv = (): boolean => {
-  return typeof window !== 'undefined' && (
-    '__TAURI__' in window || 
-    window.location.protocol === 'tauri:' || 
-    window.location.protocol === 'asset:' || 
-    window.location.search.includes('desktop=true')
-  );
-};
+import { isDesktopEnv } from '../utils/desktop';
 
 export class StorageSyncManager implements IStorageAdapter {
-  private localAdapter: LocalStorageAdapter;
+  private localAdapter: SQLiteStorageAdapter;
   private cloudAdapter: DirectusCloudAdapter;
   private activeMode: StorageMode = 'local_offline';
   private syncListeners: Array<(stats: SyncStats) => void> = [];
@@ -22,7 +15,7 @@ export class StorageSyncManager implements IStorageAdapter {
   private lastError: string | null = null;
 
   constructor() {
-    this.localAdapter = new LocalStorageAdapter();
+    this.localAdapter = new SQLiteStorageAdapter();
     this.cloudAdapter = new DirectusCloudAdapter();
 
     // Web browser environment is always cloud_synced; Desktop can be local_offline or cloud_synced

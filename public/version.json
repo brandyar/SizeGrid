@@ -1,17 +1,17 @@
 {
-  "version": "1.1.0",
-  "releaseDate": "2026-08-07",
+  "version": "1.2.0",
+  "releaseDate": "2026-08-09",
   "minSupportedVersion": "1.0.0",
   "changelog": {
     "fa": [
-      "بهینه‌سازی لایه ذخیره‌سازی و همگام‌سازی ابری و آفلاین",
-      "پشتیبانی کامل از دریافت و نصب خودکار به‌روزرسانی‌های نسخه دسکتاپ (Tauri / Electron)",
-      "ارتقای موتور هوشمند پیشنهاد سایز و مدیریت ماتریسی موجودی"
+      "افزوده شدن دیتابیس محلی امن SQLite برای لایه ذخیره‌سازی آفلاین نسخه‌های دسکتاپ (ویندوز و مک)",
+      "رفع مشکل شناسایی محیط نیتیو دسکتاپ در ویندوز (WebView2) و تفکیک کامل از مرورگر وب",
+      "همگام‌سازی سریع‌تر ماتریس موجودی، سفارش‌ها و قالب‌های سایز بین دیتابیس محلی و کلود Directus"
     ],
     "en": [
-      "Optimized storage layer and hybrid offline/cloud sync engine",
-      "Full desktop app auto-updater support for Tauri / Electron runtimes",
-      "Upgraded smart sizing engine and 2D inventory matrix manager"
+      "Added secure local SQLite database adapter for desktop offline storage (Windows & macOS)",
+      "Fixed Windows WebView2 native environment detection and auto-login flow",
+      "Faster synchronization of inventory matrix, orders, and size templates between SQLite and Directus Cloud"
     ]
   },
   "downloadUrl": "https://github.com/tankhor/tankhor-app/releases/latest"
