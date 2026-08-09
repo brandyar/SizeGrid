@@ -109,6 +109,22 @@ class AppUpdateService {
     this.notifyListeners();
 
     try {
+      // 0. Query native version from Tauri app plugin if running in Tauri desktop
+      if (this.isTauriDesktop()) {
+        try {
+          const tauriWindow = window as any;
+          const appObj = tauriWindow.__TAURI__?.app || tauriWindow.__TAURI_PLUGIN_APP__;
+          if (appObj && typeof appObj.getVersion === 'function') {
+            const nativeVersion = await appObj.getVersion();
+            if (nativeVersion && typeof nativeVersion === 'string') {
+              this.state.currentVersion = nativeVersion.trim();
+            }
+          }
+        } catch (verErr) {
+          console.warn('Native getVersion check failed:', verErr);
+        }
+      }
+
       // 1. Try Tauri native updater bridge if present
       if (this.isTauriDesktop()) {
         try {
@@ -120,15 +136,15 @@ class AppUpdateService {
               const update = await checkFn();
               if (update?.shouldUpdate || update?.available) {
                 this.activeTauriUpdateHandle = update;
-                const releaseVersion = update.manifest?.version || update.version || '1.1.0';
+                const releaseVersion = update.manifest?.version || update.version || '1.2.0';
                 
                 this.state.status = 'update_available';
                 this.state.latestRelease = {
                   version: releaseVersion,
                   releaseDate: update.manifest?.date || update.date || new Date().toISOString().split('T')[0],
                   changelog: {
-                    fa: [update.manifest?.body || update.body || 'به‌روزرسانی جدید تن‌خور با بهبود کارایی و رفع باگ‌ها'],
-                    en: [update.manifest?.body || update.body || 'New Tankhor update with performance fixes.']
+                    fa: [update.manifest?.body || update.body || 'به‌روزرسانی جدید تن‌خور v1.2.0 با دیتابیس دسکتاپ SQLite و بهبود کارایی'],
+                    en: [update.manifest?.body || update.body || 'New Tankhor update v1.2.0 with desktop SQLite database and fixes.']
                   },
                   downloadUrl: update.manifest?.url || update.url,
                 };
@@ -149,30 +165,54 @@ class AppUpdateService {
 
       // 2. Fetch update manifest via HTTP / REST API fallback
       let remoteRelease: AppVersionInfo | null = null;
-      try {
-        const res = await fetch(VERSION_MANIFEST_URL, { cache: 'no-store' });
-        if (res.ok) {
-          remoteRelease = await res.json();
+      const manifestCandidates: string[] = [];
+
+      const envManifestUrl = (import.meta as any).env?.VITE_UPDATE_MANIFEST_URL as string;
+      if (envManifestUrl && envManifestUrl.trim().length > 0) {
+        manifestCandidates.push(envManifestUrl.trim());
+      }
+
+      if (this.isTauriDesktop()) {
+        // Desktop app must query remote live web endpoints rather than tauri:// local bundle assets
+        manifestCandidates.push('https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/version.json');
+        manifestCandidates.push('https://db.tankhor.com/version.json');
+      }
+
+      if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+        manifestCandidates.push(`${window.location.origin}/version.json`);
+      }
+      manifestCandidates.push(VERSION_MANIFEST_URL);
+
+      for (const url of manifestCandidates) {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.version) {
+              remoteRelease = data;
+              break;
+            }
+          }
+        } catch (fetchErr) {
+          console.warn(`Could not fetch version manifest from ${url}:`, fetchErr);
         }
-      } catch (fetchErr) {
-        console.warn('Could not fetch /version.json, trying fallback version check:', fetchErr);
       }
 
       // Default version manifest fallback if external server manifest is not reachable
       if (!remoteRelease) {
         remoteRelease = {
-          version: '1.1.0',
-          releaseDate: '2026-08-01',
+          version: '1.2.0',
+          releaseDate: '2026-08-09',
           changelog: {
             fa: [
-              'پشتیبانی کامل از دریافت و نصب به‌روزرسانی‌های نسخه دسکتاپ',
-              'بازراه‌اندازی خودکار اپلیکیشن پس از دانلود و ارتقای فایل‌ها',
-              'نمایش پاپ‌آپ اطلاع‌رسانی نسخه‌های جدید در زمان اجرای برنامه'
+              'افزوده شدن دیتابیس محلی امن SQLite برای لایه ذخیره‌سازی آفلاین نسخه‌های دسکتاپ (ویندوز و مک)',
+              'رفع مشکل شناسایی محیط نیتیو دسکتاپ در ویندوز (WebView2) و تفکیک کامل از مرورگر وب',
+              'همگام‌سازی سریع‌تر ماتریس موجودی، سفارش‌ها و قالب‌های سایز بین دیتابیس محلی و کلود Directus'
             ],
             en: [
-              'Full support for desktop version update downloads and installation',
-              'Automatic application relaunch after installing update files',
-              'Automatic startup update notification modal'
+              'Added secure local SQLite database adapter for desktop offline storage (Windows & macOS)',
+              'Fixed Windows WebView2 native environment detection and auto-login flow',
+              'Faster synchronization of inventory matrix, orders, and size templates between SQLite and Directus Cloud'
             ]
           },
           downloadUrl: 'https://github.com/tankhor/tankhor-app/releases/latest'
