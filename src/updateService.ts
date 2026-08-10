@@ -2,7 +2,7 @@ import { AppVersionInfo, UpdateState, UpdateCheckStatus } from './types';
 import { isDesktopEnv } from './utils/desktop';
 
 // Default base version string
-const BASE_APP_VERSION = '1.2.0';
+const BASE_APP_VERSION = '1.3.0';
 
 // Retrieve stored installed version if present, or fallback to BASE_APP_VERSION
 const getInitialVersion = (): string => {
@@ -136,15 +136,15 @@ class AppUpdateService {
               const update = await checkFn();
               if (update?.shouldUpdate || update?.available) {
                 this.activeTauriUpdateHandle = update;
-                const releaseVersion = update.manifest?.version || update.version || '1.2.0';
+                const releaseVersion = update.manifest?.version || update.version || '1.3.0';
                 
                 this.state.status = 'update_available';
                 this.state.latestRelease = {
                   version: releaseVersion,
                   releaseDate: update.manifest?.date || update.date || new Date().toISOString().split('T')[0],
                   changelog: {
-                    fa: [update.manifest?.body || update.body || 'به‌روزرسانی جدید تن‌خور v1.2.0 با دیتابیس دسکتاپ SQLite و بهبود کارایی'],
-                    en: [update.manifest?.body || update.body || 'New Tankhor update v1.2.0 with desktop SQLite database and fixes.']
+                    fa: [update.manifest?.body || update.body || 'به‌روزرسانی جدید تن‌خور v1.3.0 با قابلیت خروجی/ورود محصولات و بهبود کارایی'],
+                    en: [update.manifest?.body || update.body || 'New Tankhor update v1.3.0 with Product Import/Export and fixes.']
                   },
                   downloadUrl: update.manifest?.url || update.url,
                 };
@@ -201,18 +201,18 @@ class AppUpdateService {
       // Default version manifest fallback if external server manifest is not reachable
       if (!remoteRelease) {
         remoteRelease = {
-          version: '1.2.0',
-          releaseDate: '2026-08-09',
+          version: '1.3.0',
+          releaseDate: '2026-08-10',
           changelog: {
             fa: [
-              'افزوده شدن دیتابیس محلی امن SQLite برای لایه ذخیره‌سازی آفلاین نسخه‌های دسکتاپ (ویندوز و مک)',
-              'رفع مشکل شناسایی محیط نیتیو دسکتاپ در ویندوز (WebView2) و تفکیک کامل از مرورگر وب',
-              'همگام‌سازی سریع‌تر ماتریس موجودی، سفارش‌ها و قالب‌های سایز بین دیتابیس محلی و کلود Directus'
+              'افزوده شدن قابلیت خروجی گرفتن (Export) و وارد کردن (Import) فایل JSON/CSV محصولات در کاتالوگ',
+              'ارتقای ورژن نرم‌افزار به ۱.۳.۰ جهت به‌روزرسانی خودکار دسکتاپ و وب',
+              'بهبود کارایی لایه ذخیره‌سازی محلی SQLite و Directus Cloud'
             ],
             en: [
-              'Added secure local SQLite database adapter for desktop offline storage (Windows & macOS)',
-              'Fixed Windows WebView2 native environment detection and auto-login flow',
-              'Faster synchronization of inventory matrix, orders, and size templates between SQLite and Directus Cloud'
+              'Added Product Import & Export feature (JSON/CSV) to Garments Catalog',
+              'Upgraded app version to 1.3.0 for desktop and web auto-updates',
+              'Enhanced local SQLite and Directus cloud sync performance'
             ]
           },
           downloadUrl: 'https://github.com/tankhor/tankhor-app/releases/latest'

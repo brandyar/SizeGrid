@@ -19,6 +19,11 @@ import {
   Trash2,
   Image,
   Upload,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  FileJson,
+  FolderUp,
   Check,
   AlertTriangle,
   Info,
@@ -794,6 +799,205 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     }
   };
 
+  // --- PRODUCT IMPORT / EXPORT HANDLERS ---
+  const productImportFileInputRef = useRef<HTMLInputElement>(null);
+  const [showImportExportModal, setShowImportExportModal] = useState(false);
+  const [importingProducts, setImportingProducts] = useState(false);
+
+  const handleExportJSON = () => {
+    if (products.length === 0) {
+      setError(isRtl ? "محصولی در کاتالوگ برای خروجی گرفتن وجود ندارد." : "No products available to export.");
+      return;
+    }
+    const exportData = products.map(p => ({
+      name_fa: p.name_fa || '',
+      name_en: p.name_en || '',
+      category: p.category || 'Clothing',
+      base_price: p.base_price || 0,
+      description_fa: p.description_fa || '',
+      description_en: p.description_en || '',
+      image: p.image || ''
+    }));
+
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tankhor_products_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setSuccess(isRtl ? `فایل JSON محصولات با موفقیت دریافت شد (${products.length} کالا).` : `Exported JSON (${products.length} products).`);
+    setTimeout(() => setSuccess(''), 4000);
+  };
+
+  const handleExportCSV = () => {
+    if (products.length === 0) {
+      setError(isRtl ? "محصولی در کاتالوگ برای خروجی گرفتن وجود ندارد." : "No products available to export.");
+      return;
+    }
+    const headers = ['name_fa', 'name_en', 'category', 'base_price', 'description_fa', 'description_en', 'image'];
+    const csvRows = [headers.join(',')];
+
+    products.forEach(p => {
+      const row = [
+        `"${(p.name_fa || '').replace(/"/g, '""')}"`,
+        `"${(p.name_en || '').replace(/"/g, '""')}"`,
+        `"${(p.category || 'Clothing').replace(/"/g, '""')}"`,
+        p.base_price || 0,
+        `"${(p.description_fa || '').replace(/"/g, '""')}"`,
+        `"${(p.description_en || '').replace(/"/g, '""')}"`,
+        `"${(p.image || '').replace(/"/g, '""')}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tankhor_products_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setSuccess(isRtl ? `فایل CSV محصولات با موفقیت دریافت شد (${products.length} کالا).` : `Exported CSV (${products.length} products).`);
+    setTimeout(() => setSuccess(''), 4000);
+  };
+
+  const handleDownloadSampleTemplate = (type: 'json' | 'csv') => {
+    const sampleData = [
+      {
+        name_fa: "پیراهن مردانه کتان کلاسیک",
+        name_en: "Men Classic Cotton Shirt",
+        category: "Clothing",
+        base_price: 680000,
+        description_fa: "پیراهن ۱۰۰٪ کتان خنک و سبک مناسب فصل",
+        description_en: "100% Cotton breathable casual shirt",
+        image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        name_fa: "شلوار جین اسلیم فیت دودی",
+        name_en: "Slim Fit Charcoal Jeans",
+        category: "Pants",
+        base_price: 850000,
+        description_fa: "شلوار جین با پارچه کشسان درجه یک",
+        description_en: "Stretch denim slim fit trousers",
+        image: "https://images.unsplash.com/photo-1542272604-780c36856842?auto=format&fit=crop&w=600&q=80"
+      }
+    ];
+
+    if (type === 'json') {
+      const jsonStr = JSON.stringify(sampleData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tankhor_products_sample.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = ['name_fa', 'name_en', 'category', 'base_price', 'description_fa', 'description_en', 'image'];
+      const rows = [headers.join(',')];
+      sampleData.forEach(p => {
+        rows.push([
+          `"${p.name_fa}"`,
+          `"${p.name_en}"`,
+          `"${p.category}"`,
+          p.base_price,
+          `"${p.description_fa}"`,
+          `"${p.description_en}"`,
+          `"${p.image}"`
+        ].join(','));
+      });
+      const csvContent = '\uFEFF' + rows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tankhor_products_sample.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setImportingProducts(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const text = await file.text();
+      let importedList: any[] = [];
+
+      if (file.name.toLowerCase().endsWith('.json')) {
+        const parsed = JSON.parse(text);
+        importedList = Array.isArray(parsed) ? parsed : [parsed];
+      } else if (file.name.toLowerCase().endsWith('.csv')) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (lines.length > 1) {
+          const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+          for (let i = 1; i < lines.length; i++) {
+            const regex = /(?:^|,)(?:"([^"]*)"|([^,]*))/g;
+            const matches: string[] = [];
+            let match;
+            while ((match = regex.exec(lines[i])) !== null) {
+              if (match[1] !== undefined) matches.push(match[1]);
+              else if (match[2] !== undefined) matches.push(match[2]);
+            }
+            if (matches.length > 0) {
+              const item: any = {};
+              headers.forEach((h, idx) => {
+                item[h] = matches[idx] || '';
+              });
+              importedList.push(item);
+            }
+          }
+        }
+      } else {
+        throw new Error(isRtl ? "فرمت فایل نامعتبر است. لطفاً فایل JSON یا CSV انتخاب کنید." : "Invalid file format. Please upload JSON or CSV.");
+      }
+
+      if (importedList.length === 0) {
+        throw new Error(isRtl ? "هیچ محتوای معتبری در فایل پیدا نشد." : "No valid product rows found in file.");
+      }
+
+      let successCount = 0;
+      for (const item of importedList) {
+        const nameFa = (item.name_fa || item.name_en || item.title || item.name || '').trim();
+        if (!nameFa) continue;
+        const basePrice = Math.max(0, parseInt(item.base_price || item.price || 500000) || 500000);
+
+        await storageManager.saveProduct({
+          name_fa: nameFa,
+          name_en: (item.name_en || nameFa).trim(),
+          category: (item.category || 'Clothing').trim(),
+          base_price: basePrice,
+          description_fa: (item.description_fa || '').trim(),
+          description_en: (item.description_en || '').trim(),
+          image: (item.image || '').trim()
+        });
+        successCount++;
+      }
+
+      await loadDashboardData();
+      setShowImportExportModal(false);
+      setSuccess(isRtl ? `تعداد ${successCount} محصول جدید با موفقیت به کاتالوگ اضافه شد.` : `Successfully imported ${successCount} products.`);
+      setTimeout(() => setSuccess(''), 4000);
+    } catch (err: any) {
+      setError(err.message || (isRtl ? "خطا در پردازش و ورود فایل محصولات." : "Failed to import products file."));
+    } finally {
+      setImportingProducts(false);
+      if (productImportFileInputRef.current) {
+        productImportFileInputRef.current.value = '';
+      }
+    }
+  };
+
   // --- MATRIX COMPONENT MANAGEMENT ---
   const handleCellChange = (colorId: number, sizeId: number, field: 'stock' | 'price' | 'enabled', value: any) => {
     const key = `${colorId}-${sizeId}`;
@@ -1528,13 +1732,24 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                           <h3 className="text-base sm:text-lg font-black">{isRtl ? "کاتالوگ لباس‌های شما" : "Garments Catalog"}</h3>
                           <p className={`text-[11px] sm:text-xs ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>{isRtl ? "محصولات خود را تعریف کرده و جدول سایز و تنوع رنگ آن را مشخص کنید." : "Add garments, and configure size/color variations grid."}</p>
                         </div>
-                        <button
-                          onClick={triggerAddProductMode}
-                          className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white text-xs font-bold rounded-lg shadow-lg shadow-sky-600/10 flex items-center gap-2 transition-all cursor-pointer"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>{t.add_product}</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setShowImportExportModal(true)}
+                            className={`px-3.5 py-2.5 text-xs font-bold rounded-lg border flex items-center gap-2 transition-all cursor-pointer ${darkMode ? 'bg-neutral-800/80 border-neutral-700 hover:bg-neutral-700 text-neutral-200' : 'bg-white border-neutral-300 hover:bg-neutral-50 text-neutral-700 shadow-sm'}`}
+                            title={isRtl ? "ورود و خروجی فایل محصولات (JSON / CSV)" : "Import & Export Products"}
+                          >
+                            <FolderUp className="w-4 h-4 text-emerald-500" />
+                            <span>{isRtl ? "ایمپورت / اکسپورت" : "Import & Export"}</span>
+                          </button>
+
+                          <button
+                            onClick={triggerAddProductMode}
+                            className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white text-xs font-bold rounded-lg shadow-lg shadow-sky-600/10 flex items-center gap-2 transition-all cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>{t.add_product}</span>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Search & View Toggle Controls */}
@@ -4207,6 +4422,139 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- IMPORT / EXPORT PRODUCTS MODAL --- */}
+      {showImportExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`relative w-full max-w-xl p-6 rounded-2xl shadow-2xl border ${darkMode ? 'bg-neutral-900 border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`}>
+            <button
+              onClick={() => setShowImportExportModal(false)}
+              className="absolute top-4 left-4 p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-500">
+                <FolderUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black">
+                  {isRtl ? "ورود و خروجی محصولات (Import & Export)" : "Products Import & Export"}
+                </h3>
+                <p className={`text-xs ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                  {isRtl ? "پشتیبان‌گیری از کاتالوگ یا افزودن گروهی کالاها از فایل JSON و CSV" : "Backup catalog or bulk import products from JSON / CSV files."}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* EXPORT SECTION */}
+              <div className={`p-4 rounded-xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-neutral-50 border-neutral-200'}`}>
+                <h4 className="text-xs font-black text-sky-400 mb-2 flex items-center gap-1.5">
+                  <Download className="w-4 h-4" />
+                  <span>{isRtl ? "۱. خروجی گرفتن از محصولات موجود (Export)" : "1. Export Existing Products"}</span>
+                </h4>
+                <p className={`text-[11px] mb-3 ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                  {isRtl ? `تعداد ${products.length} محصول در کاتالوگ قرار دارد. یکی از فرمت‌های زیر را برای دانلود انتخاب کنید:` : `${products.length} products available in catalog. Select export format:`}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleExportJSON}
+                    disabled={products.length === 0}
+                    className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <FileJson className="w-4 h-4" />
+                    <span>{isRtl ? "خروجی کامل JSON" : "Export JSON"}</span>
+                  </button>
+                  <button
+                    onClick={handleExportCSV}
+                    disabled={products.length === 0}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>{isRtl ? "خروجی CSV (اکسل)" : "Export CSV (Excel)"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* IMPORT SECTION */}
+              <div className={`p-4 rounded-xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-neutral-50 border-neutral-200'}`}>
+                <h4 className="text-xs font-black text-emerald-400 mb-2 flex items-center gap-1.5">
+                  <Upload className="w-4 h-4" />
+                  <span>{isRtl ? "۲. ورود گروهی محصولات از فایل (Import)" : "2. Bulk Import Products"}</span>
+                </h4>
+                <p className={`text-[11px] mb-3 ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                  {isRtl ? "فایل JSON یا CSV خود شامل مشخصات کالاها را انتخاب کنید تا به صورت خودکار به کاتالوگ اضافه شوند." : "Upload a JSON or CSV file with product details to import into catalog."}
+                </p>
+
+                {/* File Upload Box */}
+                <input
+                  type="file"
+                  ref={productImportFileInputRef}
+                  accept=".json,.csv"
+                  onChange={handleImportFile}
+                  className="hidden"
+                />
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => productImportFileInputRef.current?.click()}
+                    disabled={importingProducts}
+                    className={`w-full py-3 px-4 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      darkMode 
+                        ? 'border-neutral-700 hover:border-emerald-500 bg-neutral-900/80 text-neutral-200 hover:text-emerald-400' 
+                        : 'border-neutral-300 hover:border-emerald-600 bg-white text-neutral-700 hover:text-emerald-600'
+                    }`}
+                  >
+                    {importingProducts ? (
+                      <>
+                        <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
+                        <span className="text-xs font-bold">{isRtl ? "در حال پردازش و ثبت محصولات..." : "Importing products..."}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5 text-emerald-500" />
+                        <span className="text-xs font-extrabold">{isRtl ? "انتخاب و آپلود فایل JSON / CSV" : "Choose JSON or CSV File"}</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-neutral-800/40 text-[11px]">
+                    <span className={darkMode ? 'text-neutral-400' : 'text-neutral-500'}>
+                      {isRtl ? "نیاز به نمونه فایل ساختار یافته داری؟" : "Need a template?"}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDownloadSampleTemplate('json')}
+                        className="text-sky-400 hover:underline font-bold cursor-pointer"
+                      >
+                        {isRtl ? "دانلود نمونه JSON" : "Sample JSON"}
+                      </button>
+                      <span className="text-neutral-600">•</span>
+                      <button
+                        onClick={() => handleDownloadSampleTemplate('csv')}
+                        className="text-emerald-400 hover:underline font-bold cursor-pointer"
+                      >
+                        {isRtl ? "دانلود نمونه CSV" : "Sample CSV"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowImportExportModal(false)}
+                className={`px-4 py-2 text-xs font-bold rounded-lg border cursor-pointer ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 border-neutral-200 text-neutral-700 hover:bg-neutral-200'}`}
+              >
+                {isRtl ? "بستن" : "Close"}
+              </button>
+            </div>
           </div>
         </div>
       )}
