@@ -172,6 +172,9 @@ class AppUpdateService {
         manifestCandidates.push(envManifestUrl.trim());
       }
 
+      // Primary live production domain manifest URL
+      manifestCandidates.push('https://tankhor.com/version.json');
+
       if (this.isTauriDesktop()) {
         // Desktop app must query remote live web endpoints rather than tauri:// local bundle assets
         manifestCandidates.push('https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/version.json');
