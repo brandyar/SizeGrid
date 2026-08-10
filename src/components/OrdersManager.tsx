@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { storageManager } from '../storage/index';
 import { Order, OrderItem, Product, InventoryItem, Color, Size, CreateOrderItemInput, OrderStatus } from '../types';
-import { ShoppingCart, Plus, Trash2, Eye, Printer, CheckCircle2, AlertCircle, Search, Receipt, Package, X, RefreshCw, Layers } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, Eye, Printer, CheckCircle2, AlertCircle, Search, Receipt, Package, X, RefreshCw, Layers, FolderUp, Download, Upload, FileJson, FileSpreadsheet, Loader2 } from 'lucide-react';
 
 interface OrdersManagerProps {
   t: (key: string) => string;
@@ -233,6 +233,204 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({ t, lang, darkMode 
     }
   };
 
+  // --- ORDER IMPORT / EXPORT HANDLERS ---
+  const orderImportFileInputRef = useRef<HTMLInputElement>(null);
+  const [showOrderImportExportModal, setShowOrderImportExportModal] = useState(false);
+  const [importingOrders, setImportingOrders] = useState(false);
+
+  const handleExportOrdersJSON = () => {
+    if (orders.length === 0) {
+      showToast(lang === 'fa' ? 'هیچ سفارشی برای خروجی گرفتن وجود ندارد.' : 'No orders available to export.', 'error');
+      return;
+    }
+    const exportData = orders.map(o => ({
+      id: o.id,
+      date_created: o.date_created,
+      status: o.status,
+      order_total: o.order_total,
+      items: (o.order_items || []).map(i => ({
+        product_name: i.product_name || '',
+        color_name: i.color_name || '',
+        size_name: i.size_name || '',
+        item_quantity: i.item_quantity || 1,
+        item_price: i.item_price || 0,
+        item_total: i.item_total || ((i.item_quantity || 1) * (i.item_price || 0))
+      }))
+    }));
+
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tankhor_orders_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast(lang === 'fa' ? `خروجی JSON با موفقیت دریافت شد (${orders.length} فاکتور)` : `Exported JSON (${orders.length} orders)`, 'success');
+  };
+
+  const handleExportOrdersCSV = () => {
+    if (orders.length === 0) {
+      showToast(lang === 'fa' ? 'هیچ سفارشی برای خروجی گرفتن وجود ندارد.' : 'No orders available to export.', 'error');
+      return;
+    }
+    const headers = ['Order_ID', 'Date', 'Status', 'Total_Price', 'Items_Count', 'Items_Summary'];
+    const csvRows = [headers.join(',')];
+
+    orders.forEach(o => {
+      const itemsSummary = (o.order_items || []).map(i => `${i.product_name || ''} (${i.color_name || ''}/${i.size_name || ''}) x${i.item_quantity}`).join(' | ');
+      const row = [
+        o.id,
+        `"${(o.date_created || '').replace(/"/g, '""')}"`,
+        `"${(o.status || 'published').replace(/"/g, '""')}"`,
+        o.order_total || 0,
+        (o.order_items || []).length,
+        `"${itemsSummary.replace(/"/g, '""')}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tankhor_orders_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast(lang === 'fa' ? `خروجی CSV با موفقیت دریافت شد (${orders.length} فاکتور)` : `Exported CSV (${orders.length} orders)`, 'success');
+  };
+
+  const handleDownloadSampleOrdersTemplate = (type: 'json' | 'csv') => {
+    const sampleData = [
+      {
+        status: 'published',
+        order_total: 1360000,
+        items: [
+          {
+            item_inventory: inventory[0]?.id || 1,
+            item_quantity: 2,
+            item_price: 680000
+          }
+        ]
+      }
+    ];
+
+    if (type === 'json') {
+      const jsonStr = JSON.stringify(sampleData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tankhor_orders_sample.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = ['status', 'order_total', 'item_inventory', 'item_quantity', 'item_price'];
+      const rows = [headers.join(',')];
+      rows.push(['published', 1360000, inventory[0]?.id || 1, 2, 680000].join(','));
+      const csvContent = '\uFEFF' + rows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tankhor_orders_sample.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleImportOrdersFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    setImportingOrders(true);
+
+    try {
+      const text = await file.text();
+      let importedList: any[] = [];
+
+      if (file.name.toLowerCase().endsWith('.json')) {
+        const parsed = JSON.parse(text);
+        importedList = Array.isArray(parsed) ? parsed : [parsed];
+      } else if (file.name.toLowerCase().endsWith('.csv')) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (lines.length > 1) {
+          const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+          for (let i = 1; i < lines.length; i++) {
+            const regex = /(?:^|,)(?:"([^"]*)"|([^,]*))/g;
+            const matches: string[] = [];
+            let match;
+            while ((match = regex.exec(lines[i])) !== null) {
+              if (match[1] !== undefined) matches.push(match[1]);
+              else if (match[2] !== undefined) matches.push(match[2]);
+            }
+            if (matches.length > 0) {
+              const item: any = {};
+              headers.forEach((h, idx) => {
+                item[h] = matches[idx] || '';
+              });
+              importedList.push(item);
+            }
+          }
+        }
+      } else {
+        throw new Error(lang === 'fa' ? "فرمت فایل نامعتبر است. لطفاً فایل JSON یا CSV انتخاب کنید." : "Invalid file format. Please upload JSON or CSV.");
+      }
+
+      if (importedList.length === 0) {
+        throw new Error(lang === 'fa' ? "هیچ سطر یا داده سفارشی در فایل یافت نشد." : "No valid order rows found in file.");
+      }
+
+      let count = 0;
+      for (const item of importedList) {
+        const status = item.status || 'published';
+        const orderTotal = parseInt(item.order_total || item.total || 0, 10) || 0;
+        let itemsInput: CreateOrderItemInput[] = [];
+
+        if (Array.isArray(item.items) && item.items.length > 0) {
+          itemsInput = item.items.map((it: any) => ({
+            item_inventory: parseInt(it.item_inventory || it.inventory_id || inventory[0]?.id || 1, 10),
+            item_quantity: parseInt(it.item_quantity || it.quantity || 1, 10),
+            item_price: parseInt(it.item_price || it.price || 0, 10)
+          }));
+        } else if (item.item_inventory) {
+          itemsInput = [{
+            item_inventory: parseInt(item.item_inventory, 10),
+            item_quantity: parseInt(item.item_quantity || 1, 10),
+            item_price: parseInt(item.item_price || orderTotal, 10)
+          }];
+        } else if (inventory.length > 0) {
+          itemsInput = [{
+            item_inventory: inventory[0].id,
+            item_quantity: 1,
+            item_price: orderTotal || inventory[0].price || 100000
+          }];
+        }
+
+        await storageManager.createOrder({
+          status: status as OrderStatus,
+          order_total: orderTotal || itemsInput.reduce((sum, i) => sum + (i.item_quantity * i.item_price), 0),
+          items: itemsInput
+        });
+        count++;
+      }
+
+      await loadAllData();
+      setShowOrderImportExportModal(false);
+      showToast(lang === 'fa' ? `تعداد ${count} فاکتور جدید با موفقیت وارد شد.` : `Successfully imported ${count} orders.`, 'success');
+    } catch (err: any) {
+      showToast(err.message || (lang === 'fa' ? "خطا در وارد کردن فایل سفارشات." : "Failed to import orders file."), 'error');
+    } finally {
+      setImportingOrders(false);
+      if (orderImportFileInputRef.current) {
+        orderImportFileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Filtered orders list
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toString().includes(searchQuery) ||
@@ -291,7 +489,18 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({ t, lang, darkMode 
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={() => setShowOrderImportExportModal(true)}
+            className={`px-3.5 py-2.5 text-xs font-bold rounded-xl border flex items-center gap-2 transition-all cursor-pointer ${
+              darkMode ? 'bg-neutral-800/80 border-neutral-700 hover:bg-neutral-700 text-neutral-200' : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm'
+            }`}
+            title={lang === 'fa' ? "ورود و خروجی فایل فاکتورها (JSON / CSV)" : "Import & Export Orders"}
+          >
+            <FolderUp className="w-4 h-4 text-emerald-500" />
+            <span className="hidden sm:inline">{lang === 'fa' ? "ایمپورت / اکسپورت" : "Import & Export"}</span>
+          </button>
+
           <button
             onClick={loadAllData}
             disabled={loading}
@@ -305,7 +514,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({ t, lang, darkMode 
 
           <button
             onClick={() => setShowNewOrderModal(true)}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 cursor-pointer"
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 sm:px-5 py-2.5 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 cursor-pointer text-xs sm:text-sm"
           >
             <Plus className="w-5 h-5" />
             <span>{t('new_order')}</span>
@@ -832,6 +1041,138 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({ t, lang, darkMode 
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* --- IMPORT / EXPORT ORDERS MODAL --- */}
+      {showOrderImportExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`relative w-full max-w-xl p-6 rounded-2xl shadow-2xl border ${darkMode ? 'bg-neutral-900 border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+            <button
+              onClick={() => setShowOrderImportExportModal(false)}
+              className="absolute top-4 left-4 p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-500">
+                <FolderUp className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black">
+                  {lang === 'fa' ? "ورود و خروجی فاکتورها (Orders Import & Export)" : "Orders Import & Export"}
+                </h3>
+                <p className={`text-xs ${darkMode ? 'text-neutral-400' : 'text-slate-500'}`}>
+                  {lang === 'fa' ? "پشتیبان‌گیری از سوابق سفارشات یا ثبت گروهی فاکتورها با فایل JSON و CSV" : "Backup order records or bulk import invoices with JSON / CSV files."}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* EXPORT SECTION */}
+              <div className={`p-4 rounded-xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-slate-50 border-slate-200'}`}>
+                <h4 className="text-xs font-black text-indigo-400 mb-2 flex items-center gap-1.5">
+                  <Download className="w-4 h-4" />
+                  <span>{lang === 'fa' ? "۱. خروجی گرفتن از فاکتورها (Export)" : "1. Export Invoices"}</span>
+                </h4>
+                <p className={`text-[11px] mb-3 ${darkMode ? 'text-neutral-400' : 'text-slate-600'}`}>
+                  {lang === 'fa' ? `تعداد ${orders.length} فاکتور ثبت‌شده در سیستم موجود است. فرمت خروجی را انتخاب کنید:` : `${orders.length} registered orders available. Select export format:`}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleExportOrdersJSON}
+                    disabled={orders.length === 0}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <FileJson className="w-4 h-4" />
+                    <span>{lang === 'fa' ? "خروجی کامل JSON" : "Export JSON"}</span>
+                  </button>
+                  <button
+                    onClick={handleExportOrdersCSV}
+                    disabled={orders.length === 0}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>{lang === 'fa' ? "خروجی CSV (اکسل)" : "Export CSV (Excel)"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* IMPORT SECTION */}
+              <div className={`p-4 rounded-xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-slate-50 border-slate-200'}`}>
+                <h4 className="text-xs font-black text-emerald-400 mb-2 flex items-center gap-1.5">
+                  <Upload className="w-4 h-4" />
+                  <span>{lang === 'fa' ? "۲. ورود گروهی فاکتورها از فایل (Import)" : "2. Bulk Import Orders"}</span>
+                </h4>
+                <p className={`text-[11px] mb-3 ${darkMode ? 'text-neutral-400' : 'text-slate-600'}`}>
+                  {lang === 'fa' ? "فایل JSON یا CSV خود شامل لیست سفارشات را آپلود کنید تا به طور خودکار به سیستم افزوده شوند." : "Upload a JSON or CSV file containing orders to bulk insert into database."}
+                </p>
+
+                <input
+                  type="file"
+                  ref={orderImportFileInputRef}
+                  accept=".json,.csv"
+                  onChange={handleImportOrdersFile}
+                  className="hidden"
+                />
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => orderImportFileInputRef.current?.click()}
+                    disabled={importingOrders}
+                    className={`w-full py-3 px-4 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      darkMode 
+                        ? 'border-neutral-700 hover:border-emerald-500 bg-neutral-900/80 text-neutral-200 hover:text-emerald-400' 
+                        : 'border-slate-300 hover:border-emerald-600 bg-white text-slate-700 hover:text-emerald-600'
+                    }`}
+                  >
+                    {importingOrders ? (
+                      <>
+                        <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
+                        <span className="text-xs font-bold">{lang === 'fa' ? "در حال ثبت سفارشات..." : "Importing orders..."}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5 text-emerald-500" />
+                        <span className="text-xs font-extrabold">{lang === 'fa' ? "انتخاب و آپلود فایل JSON / CSV" : "Choose JSON or CSV File"}</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-neutral-800/40 text-[11px]">
+                    <span className={darkMode ? 'text-neutral-400' : 'text-slate-500'}>
+                      {lang === 'fa' ? "نمونه فایل ساختار یافته فاکتورها:" : "Sample order templates:"}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDownloadSampleOrdersTemplate('json')}
+                        className="text-indigo-400 hover:underline font-bold cursor-pointer"
+                      >
+                        {lang === 'fa' ? "نمونه JSON" : "Sample JSON"}
+                      </button>
+                      <span className="text-neutral-600">•</span>
+                      <button
+                        onClick={() => handleDownloadSampleOrdersTemplate('csv')}
+                        className="text-emerald-400 hover:underline font-bold cursor-pointer"
+                      >
+                        {lang === 'fa' ? "نمونه CSV" : "Sample CSV"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowOrderImportExportModal(false)}
+                className={`px-4 py-2 text-xs font-bold rounded-lg border cursor-pointer ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+              >
+                {lang === 'fa' ? "بستن" : "Close"}
+              </button>
+            </div>
           </div>
         </div>
       )}
