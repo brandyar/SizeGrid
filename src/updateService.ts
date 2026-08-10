@@ -186,9 +186,17 @@ class AppUpdateService {
       }
       manifestCandidates.push(VERSION_MANIFEST_URL);
 
-      for (const url of manifestCandidates) {
+      for (const baseUrl of manifestCandidates) {
         try {
-          const res = await fetch(url, { cache: 'no-store' });
+          const sep = baseUrl.includes('?') ? '&' : '?';
+          const cacheBusterUrl = `${baseUrl}${sep}_t=${Date.now()}`;
+          const res = await fetch(cacheBusterUrl, { 
+            cache: 'no-store',
+            headers: {
+              'Pragma': 'no-cache',
+              'Cache-Control': 'no-cache'
+            }
+          });
           if (res.ok) {
             const data = await res.json();
             if (data && data.version) {
@@ -197,7 +205,7 @@ class AppUpdateService {
             }
           }
         } catch (fetchErr) {
-          console.warn(`Could not fetch version manifest from ${url}:`, fetchErr);
+          console.warn(`Could not fetch version manifest from ${baseUrl}:`, fetchErr);
         }
       }
 
