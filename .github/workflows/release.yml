@@ -32,9 +32,14 @@ jobs:
           node -e "if (require('fs').existsSync('package-lock.json')) require('fs').unlinkSync('package-lock.json')"
           npm install
 
-      - name: Set Tauri Key Password Env
-        if: ${{ secrets.TAURI_KEY_PASSWORD != '' }}
-        run: echo "TAURI_KEY_PASSWORD=${{ secrets.TAURI_KEY_PASSWORD }}" >> $GITHUB_ENV
+      - name: Set Tauri Key Password
+        shell: bash
+        env:
+          KEY_PASS: ${{ secrets.TAURI_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEY_PASS" ]; then
+            echo "TAURI_KEY_PASSWORD=$KEY_PASS" >> $GITHUB_ENV
+          fi
 
       - name: Build Tauri App & Sign Release
         uses: tauri-apps/tauri-action@v0
