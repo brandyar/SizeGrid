@@ -26,7 +26,7 @@
         "https://update.tankhor.com/latest.json"
       ],
       "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREQzgxMUQxNDkwQTI5MEUKUldSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2YK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5MEI5RUQ2MUU5MkMzMTMKUldRVHc1SWUxcDRMYWNZSktTai9LWWZsWEpmVHJVbUt6SktGaUdwMmFseWdldTNZekhsaHNhNlYK"
     },
     "bundle": {
       "active": true,
