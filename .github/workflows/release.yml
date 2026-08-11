@@ -43,3 +43,4 @@ jobs:
           releaseBody: 'Automated Tankhor signed update release build.'
           releaseDraft: false
           prerelease: false
+          tauriScript: npx @tauri-apps/cli@1
