@@ -1260,6 +1260,96 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     }
   };
 
+  // --- WAREHOUSE EXPORT FUNCTIONS ---
+  const handleExportWarehouseCSV = () => {
+    if (warehouseInventory.length === 0) {
+      setError(isRtl ? "هیچ داده‌ای در انبار برای خروجی گرفتن وجود ندارد." : "No inventory data to export.");
+      return;
+    }
+
+    const headers = [
+      "کد متغیر (Inventory ID)",
+      "کد کالا (Product ID)",
+      "نام کالا (فارسی)",
+      "نام کالا (انگلیسی)",
+      "دسته‌بندی",
+      "رنگ",
+      "کد رنگ (Hex)",
+      "سایز",
+      "موجودی انبار (Stock)",
+      "قیمت متغیر (تومان)"
+    ];
+
+    const rows = warehouseInventory.map(item => {
+      const p = products.find(prod => prod.id === item.product_id);
+      const c = colors.find(col => col.id === item.color_id);
+      const s = sizes.find(sz => sz.id === item.size_id);
+      return [
+        item.id,
+        item.product_id,
+        `"${(p?.name_fa || '').replace(/"/g, '""')}"`,
+        `"${(p?.name_en || '').replace(/"/g, '""')}"`,
+        `"${(p?.category || '').replace(/"/g, '""')}"`,
+        `"${(c?.name_fa || '').replace(/"/g, '""')}"`,
+        `"${(c?.hex_code || '').replace(/"/g, '""')}"`,
+        `"${(s?.name || '').replace(/"/g, '""')}"`,
+        item.stock,
+        item.price
+      ];
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `tankhor_warehouse_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setSuccess(isRtl ? "گزارش موجودی انبار با فرمت CSV دانلود شد." : "Warehouse inventory exported as CSV.");
+    setTimeout(() => setSuccess(''), 3000);
+  };
+
+  const handleExportWarehouseJSON = () => {
+    if (warehouseInventory.length === 0) {
+      setError(isRtl ? "هیچ داده‌ای در انبار برای خروجی گرفتن وجود ندارد." : "No inventory data to export.");
+      return;
+    }
+
+    const exportData = warehouseInventory.map(item => {
+      const p = products.find(prod => prod.id === item.product_id);
+      const c = colors.find(col => col.id === item.color_id);
+      const s = sizes.find(sz => sz.id === item.size_id);
+      return {
+        id: item.id,
+        product_id: item.product_id,
+        product_name_fa: p?.name_fa || '',
+        product_name_en: p?.name_en || '',
+        category: p?.category || '',
+        color_id: item.color_id,
+        color_name_fa: c?.name_fa || '',
+        color_hex: c?.hex_code || '',
+        size_id: item.size_id,
+        size_name: s?.name || '',
+        stock: item.stock,
+        price: item.price
+      };
+    });
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `tankhor_warehouse_export_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setSuccess(isRtl ? "فایل JSON موجودی انبار دانلود شد." : "Warehouse inventory exported as JSON.");
+    setTimeout(() => setSuccess(''), 3000);
+  };
+
   // --- HTML5 CANVAS IMAGE COMPRESSION LOGIC ---
   const handleCompressorFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1396,10 +1486,15 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
       <aside className={`w-64 border-r shrink-0 hidden md:flex flex-col justify-between ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-200'}`}>
         <div>
           {/* Brand header */}
-          <div className={`p-5 border-b flex items-center gap-3 ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
-            <div className="p-2 bg-sky-600 rounded-xl text-white shadow-sm">
-              <Grid3X3 className="w-5 h-5" />
-            </div>
+          <div className={`p-4 border-b flex items-center gap-3 ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
+            <img 
+              src={darkMode ? "/logo-light.png" : "/logo-dark.png"} 
+              alt="Tankhor" 
+              className="h-9 w-auto object-contain shrink-0" 
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div>
               <h1 className="font-black text-sm tracking-tight text-sky-500">
                 {isRtl ? "مدیریت تن‌خور" : "Tankhor Admin"}
@@ -2925,18 +3020,45 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                       </p>
                     </div>
 
-                    {/* Search Field */}
-                    <div className="relative max-w-sm w-full">
-                      <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-neutral-400">
-                        <Search className="w-4 h-4" />
-                      </span>
-                      <input
-                        type="text"
-                        value={warehouseSearch}
-                        onChange={(e) => setWarehouseSearch(e.target.value)}
-                        placeholder={isRtl ? "جستجوی کالا بر اساس نام..." : "Search warehouse by product name..."}
-                        className={`w-full pr-10 pl-4 py-2.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-900 border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`}
-                      />
+                    {/* Actions & Search */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Search Field */}
+                      <div className="relative max-w-xs w-full sm:w-auto">
+                        <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-neutral-400">
+                          <Search className="w-4 h-4" />
+                        </span>
+                        <input
+                          type="text"
+                          value={warehouseSearch}
+                          onChange={(e) => setWarehouseSearch(e.target.value)}
+                          placeholder={isRtl ? "جستجوی کالا..." : "Search warehouse..."}
+                          className={`w-full pr-10 pl-4 py-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-900 border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`}
+                        />
+                      </div>
+
+                      {/* Export CSV Button */}
+                      <button
+                        onClick={handleExportWarehouseCSV}
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                        title={isRtl ? "خروجی اکسل / CSV" : "Export CSV"}
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>{isRtl ? "خروجی CSV" : "Export CSV"}</span>
+                      </button>
+
+                      {/* Export JSON Button */}
+                      <button
+                        onClick={handleExportWarehouseJSON}
+                        className={`px-3 py-2 border rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          darkMode 
+                            ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700' 
+                            : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border-neutral-300'
+                        }`}
+                        title={isRtl ? "خروجی JSON" : "Export JSON"}
+                      >
+                        <FileJson className="w-4 h-4 text-sky-400" />
+                        <span>{isRtl ? "خروجی JSON" : "Export JSON"}</span>
+                      </button>
                     </div>
                   </div>
 

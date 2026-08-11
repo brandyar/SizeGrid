@@ -176,17 +176,22 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
       <header className={`sticky top-0 z-50 backdrop-blur-xl border-b ${darkMode ? 'bg-neutral-950/85 border-white/10' : 'bg-white/85 border-neutral-200'} px-3 sm:px-8 py-3 transition-all`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
-          {/* Logo & Brand Identity (Clean title next to logo, no tagline) */}
+          {/* Logo & Brand Identity */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-2 sm:p-2.5 bg-gradient-to-tr from-sky-600 to-indigo-600 text-white rounded-xl shadow-lg shadow-sky-500/20 shrink-0">
-              <Grid3X3 className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
-            </div>
+            <img 
+              src={darkMode ? "/logo-light.png" : "/logo-dark.png"} 
+              alt="Tankhor Logo" 
+              className="h-8 sm:h-10 w-auto object-contain shrink-0"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 {t.brand_name}
               </span>
               <span className="text-[9px] sm:text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 sm:px-2 py-0.5 rounded-full font-black">
-                v2.5
+                v1.4.2
               </span>
             </div>
           </div>

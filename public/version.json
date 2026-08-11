@@ -1,19 +1,19 @@
 {
-  "version": "1.4.1",
-  "releaseDate": "2026-08-10",
+  "version": "1.4.2",
+  "releaseDate": "2026-08-11",
   "minSupportedVersion": "1.0.0",
   "minimum_version": "1.0.0",
-  "notes": "• افزودن قابلیت ورود و خروجی فاکتورها (JSON/CSV)\n• ارتقای لایه ذخیره‌سازی محلی SQLite و همگام‌سازی ابری",
+  "notes": "• لوگوی جدید و اختصاصی تن‌خور (حالت روشن و تاریک)\n• افزودن قابلیت اکسپورت و خروجی کامل انبار (CSV / JSON)\n• بهبود عملکرد و تست فرآیند بروزرسانی خودکار دسکتاپ",
   "changelog": {
     "fa": [
-      "افزوده شدن قابلیت ورود (Import) و خروجی گرفتن (Export) از سفارش‌ها و فاکتورها (JSON / CSV)",
-      "ارتقای نسخه نرم‌افزار به ۱.۴.۱ جهت سنجش و دریافت خودکار به‌روزرسانی ابری",
-      "پشتیبانی کامل از اتصال آنلاین دامنه tankhor.com برای بروزرسانی لحظه‌ای دسکتاپ"
+      "اضافه شدن لوگوهای رسمی جدید تن‌خور (لوگوی اختصاصی لایت و دارک) در تمامی بخش‌های برنامه",
+      "افزوده شدن امکان خروجی گرفتن کامل از موجودی انبار و کالاهای پوشاک به فرمت‌های CSV و JSON",
+      "ارتقای نسخه نرم‌افزار به ۱.۴.۲ جهت تست فرآیند سنجش و دانلود خودکار بروزرسانی دسکتاپ"
     ],
     "en": [
-      "Added Orders & Invoices Import & Export feature (JSON/CSV)",
-      "Upgraded app version to 1.4.1 for seamless online desktop auto-updates",
-      "Full live domain sync support via tankhor.com"
+      "Added official Tankhor dark & light theme brand logos across the application",
+      "Added complete Warehouse Stock & Inventory Export feature (CSV & JSON)",
+      "Upgraded version to 1.4.2 for testing automated desktop updates"
     ]
   },
   "downloadUrl": "https://github.com/tankhor/tankhor-app/releases/latest"

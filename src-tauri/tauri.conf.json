@@ -1,4 +1,5 @@
 {
+  "$schema": "https://schema.tauri.app/config/1",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -15,17 +16,17 @@
       "process": {
         "relaunch": true,
         "exit": true
-      },
-      "updater": {
-        "active": true,
-        "endpoints": [
-          "https://tankhor.com/latest.json",
-          "https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/latest.json",
-          "https://update.tankhor.com/latest.json"
-        ],
-        "dialog": false,
-        "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREQzgxMUQxNDkwQTI5MEUKUldSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2YK"
       }
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://tankhor.com/latest.json",
+        "https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/latest.json",
+        "https://update.tankhor.com/latest.json"
+      ],
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREQzgxMUQxNDkwQTI5MEUKUldSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2YK"
     },
     "bundle": {
       "active": true,
