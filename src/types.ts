@@ -131,12 +131,14 @@ export interface LocaleDictionary {
 export interface AppVersionInfo {
   version: string;
   releaseDate: string;
+  notes?: string;
   changelog: {
     fa: string[];
     en: string[];
   };
   downloadUrl?: string;
   minSupportedVersion?: string;
+  minimum_version?: string;
   isMandatory?: boolean;
 }
 

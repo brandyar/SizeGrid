@@ -1,10 +1,10 @@
 import { AppVersionInfo, UpdateState, UpdateCheckStatus } from './types';
 import { isDesktopEnv } from './utils/desktop';
 
-// Default base version string
+// Default base version string of the app binary
 const BASE_APP_VERSION = '1.4.0';
 
-// Retrieve stored installed version if present, or fallback to BASE_APP_VERSION
+// Retrieve installed version if present, or fallback to BASE_APP_VERSION
 const getInitialVersion = (): string => {
   if (typeof localStorage !== 'undefined') {
     const installedVer = localStorage.getItem('tankhor_installed_app_version');
@@ -16,9 +16,6 @@ const getInitialVersion = (): string => {
 };
 
 export const CURRENT_APP_VERSION = getInitialVersion();
-
-// Fallback version metadata manifest URL
-const VERSION_MANIFEST_URL = '/version.json';
 
 class AppUpdateService {
   private state: UpdateState = {
@@ -33,9 +30,10 @@ class AppUpdateService {
 
   private listeners: Array<(state: UpdateState) => void> = [];
   private activeTauriUpdateHandle: any = null;
+  private autoCheckTimer: any = null;
 
   constructor() {
-    // Auto check check-time from localStorage on init
+    // Load last checked time & stored version on initialization
     if (typeof localStorage !== 'undefined') {
       const savedLastCheck = localStorage.getItem('tankhor_last_update_check');
       if (savedLastCheck) {
@@ -47,11 +45,16 @@ class AppUpdateService {
       }
     }
 
-    // Trigger automatic update check on application startup (strictly for desktop or native app environments)
+    // Trigger non-blocking automatic update check on application startup
     if (typeof window !== 'undefined' && this.isDesktopOrNativeApp()) {
       setTimeout(() => {
         this.checkForUpdates(true);
-      }, 2500);
+      }, 2000);
+
+      // Periodic check every 4 hours
+      this.autoCheckTimer = setInterval(() => {
+        this.checkForUpdates(true);
+      }, 4 * 60 * 60 * 1000);
     }
   }
 
@@ -73,11 +76,21 @@ class AppUpdateService {
   }
 
   public dismissStartupModal() {
+    if (this.state.latestRelease?.isMandatory) {
+      // Mandatory updates cannot be permanently dismissed
+      return;
+    }
     this.state.showStartupModal = false;
     this.notifyListeners();
   }
 
-  // Compare semantic versions (returns >0 if v2 > v1, <0 if v2 < v1, 0 if equal)
+  /**
+   * Compare semantic versions (v1 = current, v2 = target)
+   * Returns:
+   *   > 0 if v2 is newer than v1 (e.g. v1="1.4.0", v2="1.4.1" -> returns 1)
+   *   < 0 if v2 is older than v1 (e.g. v1="1.4.1", v2="1.4.0" -> returns -1)
+   *   0 if equal
+   */
   public compareVersions(v1: string, v2: string): number {
     const parse = (v: string) => v.replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
     const p1 = parse(v1);
@@ -92,24 +105,25 @@ class AppUpdateService {
     return 0;
   }
 
-  // Check if running in native desktop or native mobile environment
   public isDesktopOrNativeApp(): boolean {
     return isDesktopEnv();
   }
 
-  // Check if running in native Tauri desktop environment
   public isTauriDesktop(): boolean {
     return isDesktopEnv();
   }
 
-  // Main check for updates method
+  /**
+   * Check for software updates
+   * @param isStartupCheck Whether this was initiated silently at app launch
+   */
   public async checkForUpdates(isStartupCheck = false): Promise<UpdateState> {
     this.state.status = 'checking';
     this.state.errorMessage = null;
     this.notifyListeners();
 
     try {
-      // 0. Query native version from Tauri app plugin if running in Tauri desktop
+      // 1. Query native app version from Tauri IPC bridge if available
       if (this.isTauriDesktop()) {
         try {
           const tauriWindow = window as any;
@@ -121,11 +135,11 @@ class AppUpdateService {
             }
           }
         } catch (verErr) {
-          console.warn('Native getVersion check failed:', verErr);
+          console.warn('Native Tauri getVersion query warning:', verErr);
         }
       }
 
-      // 1. Try Tauri native updater bridge if present
+      // 2. Query official Tauri Updater native bridge first
       if (this.isTauriDesktop()) {
         try {
           const tauriWindow = window as any;
@@ -136,20 +150,26 @@ class AppUpdateService {
               const update = await checkFn();
               if (update?.shouldUpdate || update?.available) {
                 this.activeTauriUpdateHandle = update;
-                const releaseVersion = update.manifest?.version || update.version || '1.4.0';
-                
+                const releaseVersion = update.manifest?.version || update.version || '1.4.1';
+                const minVer = update.manifest?.minimum_version || update.manifest?.minSupportedVersion || '1.0.0';
+                const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
+
                 this.state.status = 'update_available';
                 this.state.latestRelease = {
                   version: releaseVersion,
-                  releaseDate: update.manifest?.date || update.date || new Date().toISOString().split('T')[0],
+                  releaseDate: update.manifest?.pub_date || update.manifest?.date || new Date().toISOString().split('T')[0],
+                  notes: update.manifest?.notes || update.body || 'به‌روزرسانی جدید تن‌خور دسکتاپ',
                   changelog: {
-                    fa: [update.manifest?.body || update.body || 'به‌روزرسانی جدید تن‌خور v1.4.0 با قابلیت خروجی/ورود سفارش‌ها و فاکتورها'],
-                    en: [update.manifest?.body || update.body || 'New Tankhor update v1.4.0 with Orders Import/Export and improvements.']
+                    fa: [update.manifest?.notes || update.body || 'افزوده شدن قابلیت‌های جدید و ارتقای کارایی'],
+                    en: [update.manifest?.notes || update.body || 'New features and bug fixes added.']
                   },
                   downloadUrl: update.manifest?.url || update.url,
+                  minimum_version: minVer,
+                  isMandatory,
                 };
+
                 this.state.lastCheckedTime = Date.now();
-                if (isStartupCheck && this.isDesktopOrNativeApp()) {
+                if (isStartupCheck || isMandatory) {
                   this.state.showStartupModal = true;
                 }
                 localStorage.setItem('tankhor_last_update_check', this.state.lastCheckedTime.toString());
@@ -159,32 +179,30 @@ class AppUpdateService {
             }
           }
         } catch (tauriErr) {
-          console.warn('Tauri updater check failed, falling back to HTTP manifest check:', tauriErr);
+          console.warn('Tauri native updater check failed, falling back to HTTP endpoints:', tauriErr);
         }
       }
 
-      // 2. Fetch update manifest via HTTP / REST API fallback
+      // 3. Query HTTP Manifest Candidates (`latest.json` & `version.json`)
       let remoteRelease: AppVersionInfo | null = null;
-      const manifestCandidates: string[] = [];
+      const manifestCandidates: string[] = [
+        'https://tankhor.com/latest.json',
+        'https://tankhor.com/version.json',
+        'https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/latest.json',
+        'https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/version.json',
+        '/latest.json',
+        '/version.json'
+      ];
 
       const envManifestUrl = (import.meta as any).env?.VITE_UPDATE_MANIFEST_URL as string;
       if (envManifestUrl && envManifestUrl.trim().length > 0) {
-        manifestCandidates.push(envManifestUrl.trim());
-      }
-
-      // Primary live production domain manifest URL
-      manifestCandidates.push('https://tankhor.com/version.json');
-
-      if (this.isTauriDesktop()) {
-        // Desktop app must query remote live web endpoints rather than tauri:// local bundle assets
-        manifestCandidates.push('https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/version.json');
-        manifestCandidates.push('https://db.tankhor.com/version.json');
+        manifestCandidates.unshift(envManifestUrl.trim());
       }
 
       if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+        manifestCandidates.push(`${window.location.origin}/latest.json`);
         manifestCandidates.push(`${window.location.origin}/version.json`);
       }
-      manifestCandidates.push(VERSION_MANIFEST_URL);
 
       for (const baseUrl of manifestCandidates) {
         try {
@@ -197,36 +215,68 @@ class AppUpdateService {
               'Cache-Control': 'no-cache'
             }
           });
+
           if (res.ok) {
             const data = await res.json();
             if (data && data.version) {
-              remoteRelease = data;
+              const minVer = data.minimum_version || data.minSupportedVersion || '1.0.0';
+              const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
+
+              let faChangelog: string[] = [];
+              let enChangelog: string[] = [];
+
+              if (data.changelog && Array.isArray(data.changelog.fa)) {
+                faChangelog = data.changelog.fa;
+                enChangelog = data.changelog.en || data.changelog.fa;
+              } else if (data.notes) {
+                faChangelog = data.notes.split('\n').filter((l: string) => l.trim().length > 0);
+                enChangelog = faChangelog;
+              } else {
+                faChangelog = ['به‌روزرسانی جدید نرم‌افزار تن‌خور'];
+                enChangelog = ['New Tankhor update available'];
+              }
+
+              remoteRelease = {
+                version: data.version,
+                releaseDate: data.pub_date || data.releaseDate || new Date().toISOString().split('T')[0],
+                notes: data.notes || faChangelog.join(' • '),
+                changelog: {
+                  fa: faChangelog,
+                  en: enChangelog
+                },
+                downloadUrl: data.url || data.downloadUrl || 'https://github.com/tankhor/tankhor-app/releases/latest',
+                minimum_version: minVer,
+                isMandatory
+              };
               break;
             }
           }
         } catch (fetchErr) {
-          console.warn(`Could not fetch version manifest from ${baseUrl}:`, fetchErr);
+          console.warn(`Could not fetch update manifest from ${baseUrl}:`, fetchErr);
         }
       }
 
-      // Default version manifest fallback if external server manifest is not reachable
+      // Default fallback release object if offline or endpoints unreachable
       if (!remoteRelease) {
         remoteRelease = {
-          version: '1.4.0',
+          version: '1.4.1',
           releaseDate: '2026-08-10',
+          notes: '• افزودن ورود و خروجی فاکتورها (JSON/CSV)\n• ارتقای پایداری و همگام‌سازی ابری',
           changelog: {
             fa: [
               'افزوده شدن قابلیت ورود (Import) و خروجی گرفتن (Export) از سفارش‌ها و فاکتورها (JSON / CSV)',
-              'ارتقای نسخه نرم‌افزار به ۱.۴.۰ جهت سنجش و دریافت خودکار به‌روزرسانی ابری',
+              'ارتقای نسخه نرم‌افزار به ۱.۴.۱ جهت سنجش و دریافت خودکار به‌روزرسانی ابری',
               'پشتیبانی کامل از اتصال آنلاین دامنه tankhor.com برای بروزرسانی لحظه‌ای دسکتاپ'
             ],
             en: [
               'Added Orders & Invoices Import & Export feature (JSON/CSV)',
-              'Upgraded app version to 1.4.0 for seamless online desktop auto-updates',
+              'Upgraded app version to 1.4.1 for seamless online desktop auto-updates',
               'Full live domain sync support via tankhor.com'
             ]
           },
-          downloadUrl: 'https://github.com/tankhor/tankhor-app/releases/latest'
+          downloadUrl: 'https://github.com/tankhor/tankhor-app/releases/latest',
+          minimum_version: '1.0.0',
+          isMandatory: false
         };
       }
 
@@ -238,7 +288,7 @@ class AppUpdateService {
       if (hasNewVersion) {
         this.state.status = 'update_available';
         this.state.latestRelease = remoteRelease;
-        if (isStartupCheck && this.isDesktopOrNativeApp()) {
+        if (isStartupCheck || remoteRelease.isMandatory) {
           this.state.showStartupModal = true;
         }
       } else {
@@ -252,13 +302,15 @@ class AppUpdateService {
     } catch (err: any) {
       console.error('Check for updates failed:', err);
       this.state.status = 'error';
-      this.state.errorMessage = err?.message || 'خطا در بررسی نسخه جدید برنامه';
+      this.state.errorMessage = err?.message || 'برقراری ارتباط با سرور بروزرسانی برقرار نشد. لطفاً اتصال اینترنت را بررسی کنید.';
       this.notifyListeners();
       return this.getState();
     }
   }
 
-  // Method to relaunch the application in desktop or web
+  /**
+   * Relaunch the application after installation
+   */
   public async relaunchApp(): Promise<void> {
     if (typeof window === 'undefined') return;
     const tauriWindow = window as any;
@@ -282,27 +334,30 @@ class AppUpdateService {
           return;
         }
       } catch (rErr) {
-        console.warn('Native Tauri relaunch call failed, falling back to window.location.reload():', rErr);
+        console.warn('Native Tauri relaunch failed, reloading location:', rErr);
       }
     }
 
-    // Web browser / fallback reload
+    // Web browser fallback
     window.location.reload();
   }
 
-  // Trigger download and installation of the update
+  /**
+   * Download and install the available update
+   */
   public async downloadAndInstallUpdate(): Promise<void> {
     if (!this.state.latestRelease) return;
 
     this.state.status = 'downloading';
-    this.state.downloadProgress = 10;
+    this.state.downloadProgress = 5;
+    this.state.errorMessage = null;
     this.notifyListeners();
 
     try {
       if (this.isTauriDesktop()) {
         const tauriWindow = window as any;
 
-        // 1. If we have active update object from check()
+        // A. If active Tauri update handle exists from native check()
         if (this.activeTauriUpdateHandle) {
           try {
             if (typeof this.activeTauriUpdateHandle.downloadAndInstall === 'function') {
@@ -310,38 +365,37 @@ class AppUpdateService {
                 if (event?.event === 'Progress' && event?.data?.chunkLength) {
                   this.state.downloadProgress = Math.min(95, this.state.downloadProgress + 15);
                   this.notifyListeners();
+                } else if (typeof event === 'number') {
+                  this.state.downloadProgress = Math.min(99, event);
+                  this.notifyListeners();
                 }
               });
             } else if (typeof this.activeTauriUpdateHandle.download === 'function') {
-              await this.activeTauriUpdateHandle.download();
-              this.state.downloadProgress = 80;
-              this.notifyListeners();
+              await this.activeTauriUpdateHandle.download((progress: number) => {
+                this.state.downloadProgress = progress || 50;
+                this.notifyListeners();
+              });
               if (typeof this.activeTauriUpdateHandle.install === 'function') {
                 await this.activeTauriUpdateHandle.install();
               }
             }
-          } catch (tErr) {
-            console.warn('activeTauriUpdateHandle download/install warning:', tErr);
+          } catch (tErr: any) {
+            console.warn('Native update handle error:', tErr);
+            throw new Error(tErr?.message || 'خطا در تایید امضای دیجیتال یا نصب بروزرسانی دسکتاپ.');
           }
         } else {
-          // 2. Fallback to updater module global functions
+          // B. Global updater module fallback
           const updaterObj = tauriWindow.__TAURI__?.updater || tauriWindow.__TAURI_PLUGIN_UPDATER__;
           if (updaterObj) {
-            try {
-              if (typeof updaterObj.install === 'function') {
-                await updaterObj.install();
-              } else if (typeof updaterObj.installUpdate === 'function') {
-                await updaterObj.installUpdate();
-              } else if (typeof updaterObj.downloadAndInstall === 'function') {
-                await updaterObj.downloadAndInstall();
-              }
-            } catch (instErr) {
-              console.warn('Tauri native updater install call returned/warning:', instErr);
+            if (typeof updaterObj.downloadAndInstall === 'function') {
+              await updaterObj.downloadAndInstall();
+            } else if (typeof updaterObj.install === 'function') {
+              await updaterObj.install();
             }
           }
         }
 
-        // Persist installed version string so app does not revert on restart
+        // Persist installed version string
         const newVer = this.state.latestRelease.version;
         this.state.currentVersion = newVer;
         localStorage.setItem('tankhor_installed_app_version', newVer);
@@ -350,22 +404,14 @@ class AppUpdateService {
         this.state.status = 'ready_to_install';
         this.notifyListeners();
 
-        // Relaunch app process
+        // Relaunch app
         await this.relaunchApp();
-
-        // Fallback timer if process didn't terminate automatically
-        setTimeout(() => {
-          if (typeof window !== 'undefined') {
-            window.location.reload();
-          }
-        }, 2000);
-
         return;
       }
 
-      // Simulated download progress for web / browser environment
-      for (let p = 20; p <= 90; p += 20) {
-        await new Promise(r => setTimeout(r, 150));
+      // Simulated background download progress bar for web browser environment
+      for (let p = 15; p <= 95; p += 15) {
+        await new Promise(r => setTimeout(r, 180));
         this.state.downloadProgress = p;
         this.notifyListeners();
       }
@@ -378,23 +424,14 @@ class AppUpdateService {
       this.state.status = 'ready_to_install';
       this.notifyListeners();
 
-      // Open download URL or release page
       if (this.state.latestRelease.downloadUrl && typeof window !== 'undefined') {
         window.open(this.state.latestRelease.downloadUrl, '_blank');
       }
 
-      // Automatically set status to up_to_date after 3 seconds
-      setTimeout(() => {
-        if (this.state.status === 'ready_to_install') {
-          this.state.status = 'up_to_date';
-          this.state.showStartupModal = false;
-          this.notifyListeners();
-        }
-      }, 3000);
-
     } catch (err: any) {
+      console.error('Download update failed:', err);
       this.state.status = 'error';
-      this.state.errorMessage = err?.message || 'خطا در دریافت و نصب به‌روزرسانی';
+      this.state.errorMessage = err?.message || 'خطا در دریافت و تایید امضای فایل بروزرسانی. لطفاً مجدداً تلاش کنید.';
       this.notifyListeners();
     }
   }

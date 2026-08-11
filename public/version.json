@@ -1,16 +1,18 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "releaseDate": "2026-08-10",
   "minSupportedVersion": "1.0.0",
+  "minimum_version": "1.0.0",
+  "notes": "• افزودن قابلیت ورود و خروجی فاکتورها (JSON/CSV)\n• ارتقای لایه ذخیره‌سازی محلی SQLite و همگام‌سازی ابری",
   "changelog": {
     "fa": [
       "افزوده شدن قابلیت ورود (Import) و خروجی گرفتن (Export) از سفارش‌ها و فاکتورها (JSON / CSV)",
-      "ارتقای نسخه نرم‌افزار به ۱.۴.۰ جهت سنجش و دریافت خودکار به‌روزرسانی ابری",
+      "ارتقای نسخه نرم‌افزار به ۱.۴.۱ جهت سنجش و دریافت خودکار به‌روزرسانی ابری",
       "پشتیبانی کامل از اتصال آنلاین دامنه tankhor.com برای بروزرسانی لحظه‌ای دسکتاپ"
     ],
     "en": [
       "Added Orders & Invoices Import & Export feature (JSON/CSV)",
-      "Upgraded app version to 1.4.0 for seamless online desktop auto-updates",
+      "Upgraded app version to 1.4.1 for seamless online desktop auto-updates",
       "Full live domain sync support via tankhor.com"
     ]
   },

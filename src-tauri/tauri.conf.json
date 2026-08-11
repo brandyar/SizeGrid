@@ -1,0 +1,55 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:3000",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Tankhor",
+    "version": "1.4.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "process": {
+        "relaunch": true,
+        "exit": true
+      },
+      "updater": {
+        "active": true,
+        "endpoints": [
+          "https://tankhor.com/latest.json",
+          "https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/latest.json",
+          "https://update.tankhor.com/latest.json"
+        ],
+        "dialog": false,
+        "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREQzgxMUQxNDkwQTI5MEUKUldSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2YK"
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.tankhor.app",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ]
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "Tankhor - Clothing & Inventory Management",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ]
+  }
+}

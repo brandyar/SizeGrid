@@ -1,0 +1,22 @@
+{
+  "version": "1.4.1",
+  "notes": "• افزودن قابلیت ورود و خروجی فاکتورها (JSON/CSV)\n• ارتقای لایه ذخیره‌سازی محلی SQLite و همگام‌سازی ابری\n• بهبود پایداری و عملکرد سیستم بروزرسانی خودکار دسکتاپ",
+  "pub_date": "2026-08-10T10:00:00Z",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y=",
+  "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.1/tankhor_1.4.1_x64-setup.nsis.zip",
+  "minimum_version": "1.0.0",
+  "platforms": {
+    "windows-x86_64": {
+      "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.1/tankhor_1.4.1_x64-setup.nsis.zip",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
+    },
+    "darwin-x86_64": {
+      "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.1/tankhor_1.4.1_x64.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
+    },
+    "darwin-aarch64": {
+      "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.1/tankhor_1.4.1_aarch64.app.tar.gz",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
+    }
+  }
+}
