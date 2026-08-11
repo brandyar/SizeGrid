@@ -32,12 +32,15 @@ jobs:
           node -e "if (require('fs').existsSync('package-lock.json')) require('fs').unlinkSync('package-lock.json')"
           npm install
 
+      - name: Set Tauri Key Password Env
+        if: ${{ secrets.TAURI_KEY_PASSWORD != '' }}
+        run: echo "TAURI_KEY_PASSWORD=${{ secrets.TAURI_KEY_PASSWORD }}" >> $GITHUB_ENV
+
       - name: Build Tauri App & Sign Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Tankhor Desktop ${{ github.ref_name }}'
