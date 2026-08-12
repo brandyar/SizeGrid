@@ -244,7 +244,7 @@ class AppUpdateService {
                   fa: faChangelog,
                   en: enChangelog
                 },
-                downloadUrl: data.url || data.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.2',
+                downloadUrl: data.url || data.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.3',
                 minimum_version: minVer,
                 isMandatory
               };
@@ -259,22 +259,22 @@ class AppUpdateService {
       // Default fallback release object if offline or endpoints unreachable
       if (!remoteRelease) {
         remoteRelease = {
-          version: '1.4.2',
-          releaseDate: '2026-08-11',
-          notes: '• لوگوی جدید و اختصاصی تن‌خور (حالت روشن و تاریک)\n• افزودن قابلیت اکسپورت و خروجی کامل انبار (CSV / JSON)\n• بهبود عملکرد و تست فرآیند بروزرسانی خودکار دسکتاپ',
+          version: '1.4.3',
+          releaseDate: '2026-08-12',
+          notes: '• همگام‌سازی کامل فایل‌های قفل و وابستگی‌ها\n• ارتقای دیتابیس بومی SQLite و بهبود پایداری در حالت آفلاین\n• بروزرسانی نسخه برنامه دسکتاپ به ۱.۴.۳',
           changelog: {
             fa: [
-              'اضافه شدن لوگوهای رسمی جدید تن‌خور (لوگوی اختصاصی لایت و دارک) در تمامی بخش‌های برنامه',
-              'افزوده شدن امکان خروجی گرفتن کامل از موجودی انبار و کالاهای پوشاک به فرمت‌های CSV و JSON',
-              'ارتقای نسخه نرم‌افزار به ۱.۴.۲ جهت تست فرآیند سنجش و دانلود خودکار بروزرسانی دسکتاپ'
+              'همگام‌سازی کامل فایل‌های قفل و وابستگی‌های پکیج‌ها (package-lock.json) جهت بهبود فرآیند دیپلوی',
+              'ارتقای عملکرد دیتابیس بومی SQLite برای ذخیره‌سازی آفلاین و مطمئن اطلاعات در سیستم‌عامل‌های ویندوز و مک',
+              'ارتقای نسخه نرم‌افزار به ۱.۴.۳ جهت سنجش دریافت بروزرسانی خودکار دسکتاپ'
             ],
             en: [
-              'Added official Tankhor dark & light theme brand logos across the application',
-              'Added complete Warehouse Stock & Inventory Export feature (CSV & JSON)',
-              'Upgraded version to 1.4.2 for testing automated desktop updates'
+              'Synchronized package-lock.json dependencies for seamless multi-platform deployments',
+              'Enhanced native SQLite storage adapter for robust offline data persistence on Windows & macOS',
+              'Upgraded desktop application version to 1.4.3 to verify automated updates'
             ]
           },
-          downloadUrl: 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.2',
+          downloadUrl: 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.3',
           minimum_version: '1.0.0',
           isMandatory: false
         };

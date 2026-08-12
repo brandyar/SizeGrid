@@ -275,7 +275,7 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
           {/* Minimalist Desktop Software Download Actions (Windows & macOS) */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5" id="download-section">
             <a
-              href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.2/Tankhor_1.4.2_x64-setup.exe"
+              href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.3/Tankhor_1.4.3_x64-setup.exe"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-6 py-3.5 font-bold text-xs text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-sky-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -836,17 +836,17 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
                     {isRtl ? "۱. دریافت مستقیم فایل مک (DMG)" : "1. Download macOS DMG"}
                   </span>
                   <span className="text-[10px] font-mono bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-bold">
-                    v1.4.2 (Apple Silicon / Intel)
+                    v1.4.3 (Apple Silicon / Intel)
                   </span>
                 </div>
                 <a
-                  href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.2/Tankhor_1.4.2_aarch64.dmg"
+                  href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.3/Tankhor_1.4.3_aarch64.dmg"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-extrabold rounded-xl shadow-lg shadow-sky-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{isRtl ? "دانلود فایل Tankhor_1.4.2_aarch64.dmg" : "Download Tankhor_1.4.2_aarch64.dmg"}</span>
+                  <span>{isRtl ? "دانلود فایل Tankhor_1.4.3_aarch64.dmg" : "Download Tankhor_1.4.3_aarch64.dmg"}</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
