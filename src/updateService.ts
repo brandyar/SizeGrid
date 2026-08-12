@@ -183,76 +183,128 @@ class AppUpdateService {
         }
       }
 
-      // 3. Query HTTP Manifest Candidates (`latest.json` & `version.json`)
+      // 3. Query Official GitHub Releases API & HTTP Manifest Candidates
       let remoteRelease: AppVersionInfo | null = null;
-      const manifestCandidates: string[] = [
-        'https://tankhor.com/latest.json',
-        'https://tankhor.com/version.json',
-        'https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/latest.json',
-        'https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/version.json',
-        '/latest.json',
-        '/version.json'
-      ];
 
-      const envManifestUrl = (import.meta as any).env?.VITE_UPDATE_MANIFEST_URL as string;
-      if (envManifestUrl && envManifestUrl.trim().length > 0) {
-        manifestCandidates.unshift(envManifestUrl.trim());
-      }
+      // 3A. Direct query to GitHub Releases API for brandyar/SizeGrid
+      try {
+        const ghRes = await fetch('https://api.github.com/repos/brandyar/SizeGrid/releases/latest', {
+          headers: { 'Accept': 'application/vnd.github.v3+json' },
+          cache: 'no-store'
+        });
+        if (ghRes.ok) {
+          const ghData = await ghRes.json();
+          if (ghData && ghData.tag_name) {
+            const cleanVer = ghData.tag_name.replace(/^v/, '');
+            const notes = ghData.body || 'به‌روزرسانی جدید نرم‌افزار تن‌خور دسکتاپ';
+            let exeUrl = `https://github.com/brandyar/SizeGrid/releases/download/v${cleanVer}/Tankhor_${cleanVer}_x64-setup.exe`;
+            let dmgUrl = `https://github.com/brandyar/SizeGrid/releases/download/v${cleanVer}/Tankhor_${cleanVer}_aarch64.dmg`;
 
-      if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
-        manifestCandidates.push(`${window.location.origin}/latest.json`);
-        manifestCandidates.push(`${window.location.origin}/version.json`);
-      }
-
-      for (const baseUrl of manifestCandidates) {
-        try {
-          const sep = baseUrl.includes('?') ? '&' : '?';
-          const cacheBusterUrl = `${baseUrl}${sep}_t=${Date.now()}`;
-          const res = await fetch(cacheBusterUrl, { 
-            cache: 'no-store',
-            headers: {
-              'Pragma': 'no-cache',
-              'Cache-Control': 'no-cache'
+            if (Array.isArray(ghData.assets)) {
+              const exeAsset = ghData.assets.find((a: any) => a.name?.endsWith('.exe'));
+              if (exeAsset?.browser_download_url) exeUrl = exeAsset.browser_download_url;
+              const dmgAsset = ghData.assets.find((a: any) => a.name?.endsWith('.dmg'));
+              if (dmgAsset?.browser_download_url) dmgUrl = dmgAsset.browser_download_url;
             }
-          });
 
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.version) {
-              const minVer = data.minimum_version || data.minSupportedVersion || '1.0.0';
-              const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
+            const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+            const downloadUrl = isMac ? dmgUrl : exeUrl;
 
-              let faChangelog: string[] = [];
-              let enChangelog: string[] = [];
-
-              if (data.changelog && Array.isArray(data.changelog.fa)) {
-                faChangelog = data.changelog.fa;
-                enChangelog = data.changelog.en || data.changelog.fa;
-              } else if (data.notes) {
-                faChangelog = data.notes.split('\n').filter((l: string) => l.trim().length > 0);
-                enChangelog = faChangelog;
-              } else {
-                faChangelog = ['به‌روزرسانی جدید نرم‌افزار تن‌خور'];
-                enChangelog = ['New Tankhor update available'];
-              }
-
-              remoteRelease = {
-                version: data.version,
-                releaseDate: data.pub_date || data.releaseDate || new Date().toISOString().split('T')[0],
-                notes: data.notes || faChangelog.join(' • '),
-                changelog: {
-                  fa: faChangelog,
-                  en: enChangelog
-                },
-                downloadUrl: data.url || data.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.3',
-                minimum_version: minVer,
-                isMandatory
-              };
-              break;
-            }
+            remoteRelease = {
+              version: cleanVer,
+              releaseDate: ghData.published_at ? ghData.published_at.split('T')[0] : new Date().toISOString().split('T')[0],
+              notes: notes,
+              changelog: {
+                fa: notes.split('\n').filter((l: string) => l.trim().length > 0),
+                en: notes.split('\n').filter((l: string) => l.trim().length > 0)
+              },
+              downloadUrl: downloadUrl || ghData.html_url,
+              minimum_version: '1.0.0',
+              isMandatory: false
+            };
           }
-        } catch (fetchErr) {
-          console.warn(`Could not fetch update manifest from ${baseUrl}:`, fetchErr);
+        }
+      } catch (ghErr) {
+        console.warn('GitHub Releases API query failed, falling back to raw manifests:', ghErr);
+      }
+
+      // 3B. Query Raw Manifest Endpoints if GitHub Releases API didn't return or was rate-limited
+      if (!remoteRelease) {
+        const manifestCandidates: string[] = [
+          'https://raw.githubusercontent.com/brandyar/SizeGrid/main/public/version.json',
+          'https://raw.githubusercontent.com/brandyar/SizeGrid/main/public/latest.json',
+          'https://raw.githubusercontent.com/brandyar/SizeGrid/master/public/version.json',
+          'https://raw.githubusercontent.com/brandyar/SizeGrid/master/public/latest.json',
+          'https://tankhor.com/version.json',
+          'https://tankhor.com/latest.json'
+        ];
+
+        const envManifestUrl = (import.meta as any).env?.VITE_UPDATE_MANIFEST_URL as string;
+        if (envManifestUrl && envManifestUrl.trim().length > 0) {
+          manifestCandidates.unshift(envManifestUrl.trim());
+        }
+
+        if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+          manifestCandidates.push(`${window.location.origin}/latest.json`);
+          manifestCandidates.push(`${window.location.origin}/version.json`);
+        }
+
+        // Only query relative /version.json in WEB browser mode, NOT in Tauri desktop mode
+        if (!this.isTauriDesktop()) {
+          manifestCandidates.push('/latest.json');
+          manifestCandidates.push('/version.json');
+        }
+
+        for (const baseUrl of manifestCandidates) {
+          try {
+            const sep = baseUrl.includes('?') ? '&' : '?';
+            const cacheBusterUrl = `${baseUrl}${sep}_t=${Date.now()}`;
+            const res = await fetch(cacheBusterUrl, { 
+              cache: 'no-store',
+              headers: {
+                'Pragma': 'no-cache',
+                'Cache-Control': 'no-cache'
+              }
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.version) {
+                const minVer = data.minimum_version || data.minSupportedVersion || '1.0.0';
+                const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
+
+                let faChangelog: string[] = [];
+                let enChangelog: string[] = [];
+
+                if (data.changelog && Array.isArray(data.changelog.fa)) {
+                  faChangelog = data.changelog.fa;
+                  enChangelog = data.changelog.en || data.changelog.fa;
+                } else if (data.notes) {
+                  faChangelog = data.notes.split('\n').filter((l: string) => l.trim().length > 0);
+                  enChangelog = faChangelog;
+                } else {
+                  faChangelog = ['به‌روزرسانی جدید نرم‌افزار تن‌خور'];
+                  enChangelog = ['New Tankhor update available'];
+                }
+
+                remoteRelease = {
+                  version: data.version,
+                  releaseDate: data.pub_date || data.releaseDate || new Date().toISOString().split('T')[0],
+                  notes: data.notes || faChangelog.join(' • '),
+                  changelog: {
+                    fa: faChangelog,
+                    en: enChangelog
+                  },
+                  downloadUrl: data.url || data.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.3',
+                  minimum_version: minVer,
+                  isMandatory
+                };
+                break;
+              }
+            }
+          } catch (fetchErr) {
+            console.warn(`Could not fetch update manifest from ${baseUrl}:`, fetchErr);
+          }
         }
       }
 
