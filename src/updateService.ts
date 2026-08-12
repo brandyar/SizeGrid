@@ -4,18 +4,7 @@ import { isDesktopEnv } from './utils/desktop';
 // Default base version string of the app binary
 const BASE_APP_VERSION = '1.4.4';
 
-// Retrieve installed version if present, or fallback to BASE_APP_VERSION
-const getInitialVersion = (): string => {
-  if (typeof localStorage !== 'undefined') {
-    const installedVer = localStorage.getItem('tankhor_installed_app_version');
-    if (installedVer && installedVer.trim().length > 0) {
-      return installedVer.trim();
-    }
-  }
-  return BASE_APP_VERSION;
-};
-
-export const CURRENT_APP_VERSION = getInitialVersion();
+export const CURRENT_APP_VERSION = BASE_APP_VERSION;
 
 class AppUpdateService {
   private state: UpdateState = {
@@ -33,15 +22,12 @@ class AppUpdateService {
   private autoCheckTimer: any = null;
 
   constructor() {
-    // Load last checked time & stored version on initialization
+    // Load last checked time on initialization & clean legacy fake version overrides
     if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('tankhor_installed_app_version');
       const savedLastCheck = localStorage.getItem('tankhor_last_update_check');
       if (savedLastCheck) {
         this.state.lastCheckedTime = parseInt(savedLastCheck, 10);
-      }
-      const savedInstalled = localStorage.getItem('tankhor_installed_app_version');
-      if (savedInstalled) {
-        this.state.currentVersion = savedInstalled;
       }
     }
 
@@ -401,14 +387,15 @@ class AppUpdateService {
     if (!this.state.latestRelease) return;
 
     this.state.status = 'downloading';
-    this.state.downloadProgress = 5;
+    this.state.downloadProgress = 10;
     this.state.errorMessage = null;
     this.notifyListeners();
 
     try {
-      if (this.isTauriDesktop()) {
-        const tauriWindow = window as any;
+      const tauriWindow = typeof window !== 'undefined' ? (window as any) : null;
+      let installedViaNativeUpdater = false;
 
+      if (this.isTauriDesktop() && tauriWindow) {
         // A. If active Tauri update handle exists from native check()
         if (this.activeTauriUpdateHandle) {
           try {
@@ -422,6 +409,7 @@ class AppUpdateService {
                   this.notifyListeners();
                 }
               });
+              installedViaNativeUpdater = true;
             } else if (typeof this.activeTauriUpdateHandle.download === 'function') {
               await this.activeTauriUpdateHandle.download((progress: number) => {
                 this.state.downloadProgress = progress || 50;
@@ -429,61 +417,67 @@ class AppUpdateService {
               });
               if (typeof this.activeTauriUpdateHandle.install === 'function') {
                 await this.activeTauriUpdateHandle.install();
+                installedViaNativeUpdater = true;
               }
             }
           } catch (tErr: any) {
             console.warn('Native update handle error:', tErr);
-            throw new Error(tErr?.message || 'خطا در تایید امضای دیجیتال یا نصب بروزرسانی دسکتاپ.');
           }
-        } else {
-          // B. Global updater module fallback
+        }
+
+        // B. Global updater module fallback if not handled
+        if (!installedViaNativeUpdater) {
           const updaterObj = tauriWindow.__TAURI__?.updater || tauriWindow.__TAURI_PLUGIN_UPDATER__;
           if (updaterObj) {
-            if (typeof updaterObj.downloadAndInstall === 'function') {
-              await updaterObj.downloadAndInstall();
-            } else if (typeof updaterObj.install === 'function') {
-              await updaterObj.install();
+            try {
+              if (typeof updaterObj.downloadAndInstall === 'function') {
+                await updaterObj.downloadAndInstall();
+                installedViaNativeUpdater = true;
+              } else if (typeof updaterObj.install === 'function') {
+                await updaterObj.install();
+                installedViaNativeUpdater = true;
+              }
+            } catch (upErr) {
+              console.warn('Global Tauri updater failed:', upErr);
             }
           }
         }
 
-        // Persist installed version string
-        const newVer = this.state.latestRelease.version;
-        this.state.currentVersion = newVer;
-        localStorage.setItem('tankhor_installed_app_version', newVer);
+        if (installedViaNativeUpdater) {
+          this.state.downloadProgress = 100;
+          this.state.status = 'ready_to_install';
+          this.notifyListeners();
 
-        this.state.downloadProgress = 100;
-        this.state.status = 'ready_to_install';
-        this.notifyListeners();
-
-        // Relaunch app
-        await this.relaunchApp();
-        return;
+          // Relaunch app
+          await this.relaunchApp();
+          return;
+        }
       }
 
-      // Simulated background download progress bar for web browser environment
-      for (let p = 15; p <= 95; p += 15) {
-        await new Promise(r => setTimeout(r, 180));
-        this.state.downloadProgress = p;
-        this.notifyListeners();
-      }
+      // C. Fallback for manual DMG / EXE installer download (Opening direct download URL)
+      const targetUrl = this.state.latestRelease.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/latest';
 
-      const newVer = this.state.latestRelease.version;
-      this.state.currentVersion = newVer;
-      localStorage.setItem('tankhor_installed_app_version', newVer);
+      if (tauriWindow) {
+        if (tauriWindow.__TAURI__?.shell?.open) {
+          await tauriWindow.__TAURI__.shell.open(targetUrl);
+        } else if (tauriWindow.__TAURI_PLUGIN_SHELL__?.open) {
+          await tauriWindow.__TAURI_PLUGIN_SHELL__.open(targetUrl);
+        } else if (typeof window !== 'undefined') {
+          window.open(targetUrl, '_blank');
+        }
+      } else if (typeof window !== 'undefined') {
+        window.open(targetUrl, '_blank');
+      }
 
       this.state.downloadProgress = 100;
-      this.state.status = 'ready_to_install';
+      this.state.status = 'update_available';
+      this.state.errorMessage = 'دانلود مستقیم فایل نصب جدید (DMG/EXE) آغاز شد. لطفاً پس از پایان دانلود، فایل را نصب نمایید.';
       this.notifyListeners();
-
-      if (this.state.latestRelease.downloadUrl && typeof window !== 'undefined') {
-        window.open(this.state.latestRelease.downloadUrl, '_blank');
-      }
 
     } catch (err: any) {
       console.error('Download update failed:', err);
       this.state.status = 'error';
-      this.state.errorMessage = err?.message || 'خطا در دریافت و تایید امضای فایل بروزرسانی. لطفاً مجدداً تلاش کنید.';
+      this.state.errorMessage = err?.message || 'خطا در دریافت فایل بروزرسانی. لطفاً مستقیم از گیتهاب دریافت نمایید.';
       this.notifyListeners();
     }
   }
