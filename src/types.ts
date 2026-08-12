@@ -116,6 +116,7 @@ export interface InventoryItem {
   size_id: number;
   stock: number;
   price: number; // custom price for this variant, falls back to product base_price
+  sku?: string; // unique stock keeping unit / barcode text
 }
 
 export interface DiffSyncPayload {

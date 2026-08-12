@@ -1,20 +1,22 @@
 {
-  "version": "1.4.3",
+  "version": "1.4.4",
   "releaseDate": "2026-08-12",
   "minSupportedVersion": "1.0.0",
   "minimum_version": "1.0.0",
-  "notes": "• همگام‌سازی کامل فایل‌های قفل و وابستگی‌ها\n• ارتقای دیتابیس بومی SQLite و بهبود پایداری در حالت آفلاین\n• بروزرسانی نسخه برنامه دسکتاپ به ۱.۴.۳",
+  "notes": "• اضافه شدن سیستم هوشمند تولید و چاپ بارکد و لیبل انبار پوشاک\n• امکان تنظیم ابعاد اتیکت‌های حرارتی (۵۰x۳۰، ۴۰x۳۰ و سفارشی)\n• پشتیبانی از کدهای SKU اختصاصی، کد QR و بارکد خطی CODE128",
   "changelog": {
     "fa": [
-      "همگام‌سازی کامل فایل‌های قفل و وابستگی‌های پکیج‌ها (package-lock.json) جهت بهبود فرآیند دیپلوی",
-      "ارتقای عملکرد دیتابیس بومی SQLite برای ذخیره‌سازی آفلاین و مطمئن اطلاعات در سیستم‌عامل‌های ویندوز و مک",
-      "ارتقای نسخه نرم‌افزار به ۱.۴.۳ جهت سنجش دریافت بروزرسانی خودکار دسکتاپ"
+      "افزودن ماژول تولید و چاپ مستقیم بارکد و لیبل انبار پوشاک با قابلیت چاپ حرارتی",
+      "پشتیبانی از کدهای شناسه SKU اختصاصی، قیمت، رنگ، سایز و کد QR هوشمند روی اتیکت",
+      "امکان تنظیم پیش‌فرض ابعاد برچسب (۵۰x۳۰ میلی‌متر، ۴۰x۳۰ و سفارشی)",
+      "ارتقای نسخه نرم‌افزار به ۱.۴.۴"
     ],
     "en": [
-      "Synchronized package-lock.json dependencies for seamless multi-platform deployments",
-      "Enhanced native SQLite storage adapter for robust offline data persistence on Windows & macOS",
-      "Upgraded desktop application version to 1.4.3 to verify automated updates"
+      "Added clothing inventory barcode and thermal label printing system",
+      "Support for customizable thermal label presets (50x30mm, 40x30mm, etc.)",
+      "Auto SKU generation, QR Code embedding, and thermal printer compatibility",
+      "Upgraded application version to 1.4.4"
     ]
   },
-  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.3"
+  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.4"
 }

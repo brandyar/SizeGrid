@@ -6,6 +6,7 @@ import { useRouter } from './Router';
 import { Product, InventoryItem, Color, Size, SizeGuideTemplate, SizeGuideTemplateItem, ClothingTypeSlug } from '../types';
 import { AppUpdateWidget } from './AppUpdateWidget';
 import { OrdersManager } from './OrdersManager';
+import { BarcodeGenerator } from './BarcodeGenerator';
 import { isDesktopEnv } from '../utils/desktop';
 import {
   ShoppingCart,
@@ -52,7 +53,8 @@ import {
   Crown,
   Wifi,
   WifiOff,
-  Globe
+  Globe,
+  Barcode as BarcodeIcon,
 } from 'lucide-react';
 
 const getDefaultMeasurementsForSize = (sizeName: string) => {
@@ -200,7 +202,7 @@ interface DashboardProps {
   setDarkMode: (val: boolean) => void;
 }
 
-type ActiveTab = 'products' | 'orders' | 'warehouse' | 'categories' | 'templates' | 'sizes' | 'compressor' | 'settings';
+type ActiveTab = 'products' | 'orders' | 'warehouse' | 'barcodes' | 'categories' | 'templates' | 'sizes' | 'compressor' | 'settings';
 type EditSubTab = 'general' | 'guides' | 'matrix';
 
 export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: DashboardProps) {
@@ -1572,6 +1574,14 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
             </button>
 
             <button
+              onClick={() => { setActiveTab('barcodes'); setIsEditingProd(null); }}
+              className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'barcodes' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
+            >
+              <BarcodeIcon className="w-4 h-4" />
+              <span>{isRtl ? "چاپ بارکد و اتیکت انبار" : "Barcode & Labels"}</span>
+            </button>
+
+            <button
               onClick={() => { setActiveTab('categories'); setIsEditingProd(null); }}
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'categories' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
             >
@@ -1670,6 +1680,13 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                 <Warehouse className="w-4 h-4" />
               </button>
               <button
+                onClick={() => { setActiveTab('barcodes'); setIsEditingProd(null); }}
+                className={`p-1.5 rounded-md ${activeTab === 'barcodes' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
+                title={isRtl ? "بارکد و لیبل انبار" : "Barcodes"}
+              >
+                <BarcodeIcon className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => { setActiveTab('templates'); setIsEditingProd(null); }}
                 className={`p-1.5 rounded-md ${activeTab === 'templates' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
                 title={isRtl ? "قالب‌های سایز" : "Size Templates"}
@@ -1706,6 +1723,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                 {activeTab === 'products' ? (isEditingProd ? (isEditingProd.id === 0 ? t.add_product : t.edit_product) : (isRtl ? "کاتالوگ کالاها" : "Catalog")) : ''}
                 {activeTab === 'orders' ? (isRtl ? "مدیریت سفارشات و صدور فاکتور" : "Orders & Invoice POS") : ''}
                 {activeTab === 'warehouse' ? (isRtl ? "مدیریت انبار" : "Warehouse") : ''}
+                {activeTab === 'barcodes' ? (isRtl ? "تولید و چاپ بارکد و اتیکت انبار" : "Barcode & Label Generator") : ''}
                 {activeTab === 'templates' ? (isRtl ? "قالب‌های سایزبندی" : "Size Templates") : ''}
                 {activeTab === 'sizes' ? (isRtl ? "مدیریت سایزها" : "Size Management") : ''}
                 {activeTab === 'compressor' ? t.image_compressor : ''}
@@ -3036,6 +3054,16 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                         />
                       </div>
 
+                      {/* Barcode Generator Shortcut Button */}
+                      <button
+                        onClick={() => setActiveTab('barcodes')}
+                        className="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                        title={isRtl ? "تولید و چاپ اتیکت و بارکد حرارتی" : "Thermal Barcode Labels"}
+                      >
+                        <BarcodeIcon className="w-4 h-4" />
+                        <span>{isRtl ? "چاپ بارکد انبار" : "Print Barcodes"}</span>
+                      </button>
+
                       {/* Export CSV Button */}
                       <button
                         onClick={handleExportWarehouseCSV}
@@ -3261,6 +3289,31 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* TAB 2.2: BARCODE & LABEL GENERATOR */}
+              {activeTab === 'barcodes' && (
+                <BarcodeGenerator
+                  products={products}
+                  inventory={warehouseInventory}
+                  colors={colors}
+                  sizes={sizes}
+                  categories={categoriesList}
+                  lang={lang}
+                  shopName={settingsShopName || currentUser?.shop_name || 'تن‌خور'}
+                  onUpdateInventorySku={async (updatedInventoryItem) => {
+                    try {
+                      await storageManager.updateInventory(updatedInventoryItem);
+                      const fullInv = storageManager.getInventory();
+                      setWarehouseInventory(fullInv);
+                      setSuccess(isRtl ? "کد شناسه SKU و اطلاعات بارکد با موفقیت بروزرسانی شد." : "Inventory SKU updated successfully.");
+                      setTimeout(() => setSuccess(''), 3000);
+                    } catch (err: any) {
+                      setError(err.message || (isRtl ? "خطا در به‌روزرسانی کد SKU." : "Failed to update SKU."));
+                      setTimeout(() => setError(''), 4000);
+                    }
+                  }}
+                />
               )}
 
               {/* TAB 2.5: SIZE GUIDE TEMPLATES CRUD MANAGER */}

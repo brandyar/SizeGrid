@@ -2,7 +2,7 @@ import { AppVersionInfo, UpdateState, UpdateCheckStatus } from './types';
 import { isDesktopEnv } from './utils/desktop';
 
 // Default base version string of the app binary
-const BASE_APP_VERSION = '1.4.0';
+const BASE_APP_VERSION = '1.4.4';
 
 // Retrieve installed version if present, or fallback to BASE_APP_VERSION
 const getInitialVersion = (): string => {

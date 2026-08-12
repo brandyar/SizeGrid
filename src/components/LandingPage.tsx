@@ -201,7 +201,7 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
                 {t.brand_name}
               </span>
               <span className="text-[9px] sm:text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 sm:px-2 py-0.5 rounded-full font-black">
-                v1.4.2
+                v1.4.4
               </span>
             </div>
           </div>
