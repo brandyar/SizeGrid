@@ -985,7 +985,8 @@ class DirectusService {
       color_id: item.color_id,
       size_id: item.size_id,
       stock: item.stock,
-      price: item.price
+      price: item.price,
+      sku: item.sku || ''
     }));
   }
 
@@ -1017,11 +1018,12 @@ class DirectusService {
       color_id: item.color_id,
       size_id: item.size_id,
       stock: item.stock,
-      price: item.price
+      price: item.price,
+      sku: item.sku || ''
     }));
   }
 
-  async updateInventoryItem(id: number, fields: { stock?: number; price?: number }): Promise<void> {
+  async updateInventoryItem(id: number, fields: { stock?: number; price?: number; sku?: string }): Promise<void> {
     const currentUser = this.getCurrentUser();
     if (!currentUser) throw new Error("Authentication required.");
 
@@ -1072,14 +1074,16 @@ class DirectusService {
           color_id: item.color_id,
           size_id: item.size_id,
           stock: item.stock,
-          price: item.price
+          price: item.price,
+          sku: item.sku || ''
         });
       } else {
-        if (original.stock !== item.stock || original.price !== item.price) {
+        if (original.stock !== item.stock || original.price !== item.price || original.sku !== item.sku) {
           payload.update.push({
             id: original.id,
             stock: item.stock,
-            price: item.price
+            price: item.price,
+            sku: item.sku !== undefined ? item.sku : original.sku
           });
         }
       }

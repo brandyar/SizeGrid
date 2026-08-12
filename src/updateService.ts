@@ -2,7 +2,7 @@ import { AppVersionInfo, UpdateState, UpdateCheckStatus } from './types';
 import { isDesktopEnv } from './utils/desktop';
 
 // Default base version string of the app binary
-const BASE_APP_VERSION = '1.4.4';
+const BASE_APP_VERSION = '1.4.5';
 
 export const CURRENT_APP_VERSION = BASE_APP_VERSION;
 

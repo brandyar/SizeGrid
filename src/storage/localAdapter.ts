@@ -432,7 +432,8 @@ export class LocalStorageAdapter implements IStorageAdapter {
             newProdInventory.push({
               ...matched,
               stock: targetItem.stock,
-              price: targetItem.price
+              price: targetItem.price,
+              sku: targetItem.sku !== undefined ? targetItem.sku : matched.sku
             });
           } else {
             maxId++;
@@ -442,7 +443,8 @@ export class LocalStorageAdapter implements IStorageAdapter {
               color_id: targetItem.color_id,
               size_id: targetItem.size_id,
               stock: targetItem.stock,
-              price: targetItem.price
+              price: targetItem.price,
+              sku: targetItem.sku || ''
             });
           }
         }

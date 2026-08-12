@@ -326,7 +326,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
   const [newTemplateName, setNewTemplateName] = useState('');
 
   // Matrix Editor State within Edit Form
-  const [matrixGridState, setMatrixGridState] = useState<Record<string, { stock: number; price: number; enabled: boolean }>>({});
+  const [matrixGridState, setMatrixGridState] = useState<Record<string, { stock: number; price: number; sku?: string; enabled: boolean }>>({});
   const [savingMatrix, setSavingMatrix] = useState(false);
 
   // Size Guides state within Edit Form
@@ -360,6 +360,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
   const [updatingWarehouseId, setUpdatingWarehouseId] = useState<number | null>(null);
   const [localStockEdits, setLocalStockEdits] = useState<Record<number, number>>({});
   const [localPriceEdits, setLocalPriceEdits] = useState<Record<number, number>>({});
+  const [localSkuEdits, setLocalSkuEdits] = useState<Record<number, string>>({});
 
   // Settings Form State
   const [settingsShopName, setSettingsShopName] = useState(currentUser?.shop_name || '');
@@ -589,7 +590,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
       setSelectedSizeIds(activeSizes.length > 0 ? activeSizes : sizes.slice(0, 3).map(s => s.id));
 
       // Build grid state from inventory
-      const gridState: Record<string, { stock: number; price: number; enabled: boolean }> = {};
+      const gridState: Record<string, { stock: number; price: number; sku?: string; enabled: boolean }> = {};
       colors.forEach(col => {
         sizes.forEach(sz => {
           const key = `${col.id}-${sz.id}`;
@@ -597,6 +598,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
           gridState[key] = {
             stock: matched ? matched.stock : 0,
             price: matched ? matched.price : prod.base_price,
+            sku: matched ? (matched.sku || '') : '',
             enabled: !!matched
           };
         });
@@ -1001,12 +1003,13 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
   };
 
   // --- MATRIX COMPONENT MANAGEMENT ---
-  const handleCellChange = (colorId: number, sizeId: number, field: 'stock' | 'price' | 'enabled', value: any) => {
+  const handleCellChange = (colorId: number, sizeId: number, field: 'stock' | 'price' | 'sku' | 'enabled', value: any) => {
     const key = `${colorId}-${sizeId}`;
     setMatrixGridState(prev => {
       const updated = { ...prev[key] };
       if (field === 'stock') updated.stock = Math.max(0, parseInt(value) || 0);
       else if (field === 'price') updated.price = Math.max(0, parseInt(value) || 0);
+      else if (field === 'sku') updated.sku = String(value || '');
       else if (field === 'enabled') updated.enabled = !!value;
 
       return {
@@ -1035,7 +1038,8 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
             color_id: colId,
             size_id: szId,
             stock: cell.stock,
-            price: cell.price
+            price: cell.price,
+            sku: cell.sku || ''
           });
         }
       });
@@ -1233,12 +1237,14 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
 
     const targetStock = localStockEdits[invItem.id] !== undefined ? localStockEdits[invItem.id] : invItem.stock;
     const targetPrice = localPriceEdits[invItem.id] !== undefined ? localPriceEdits[invItem.id] : invItem.price;
+    const targetSku = localSkuEdits[invItem.id] !== undefined ? localSkuEdits[invItem.id] : (invItem.sku || '');
 
     try {
       await storageManager.updateInventory([{
         ...invItem,
         stock: Number(targetStock),
-        price: Number(targetPrice)
+        price: Number(targetPrice),
+        sku: targetSku
       }]);
       setSuccess(isRtl ? "موجودی با موفقیت به‌روزرسانی شد." : "Stock item updated successfully.");
       setTimeout(() => setSuccess(''), 3000);
@@ -1253,12 +1259,15 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     }
   };
 
-  const handleWarehouseLocalChange = (itemId: number, field: 'stock' | 'price', value: string) => {
-    const valNum = Math.max(0, parseInt(value) || 0);
+  const handleWarehouseLocalChange = (itemId: number, field: 'stock' | 'price' | 'sku', value: string) => {
     if (field === 'stock') {
+      const valNum = Math.max(0, parseInt(value) || 0);
       setLocalStockEdits(prev => ({ ...prev, [itemId]: valNum }));
-    } else {
+    } else if (field === 'price') {
+      const valNum = Math.max(0, parseInt(value) || 0);
       setLocalPriceEdits(prev => ({ ...prev, [itemId]: valNum }));
+    } else if (field === 'sku') {
+      setLocalSkuEdits(prev => ({ ...prev, [itemId]: value }));
     }
   };
 
@@ -1272,6 +1281,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     const headers = [
       "کد متغیر (Inventory ID)",
       "کد کالا (Product ID)",
+      "شناسه کالا (SKU)",
       "نام کالا (فارسی)",
       "نام کالا (انگلیسی)",
       "دسته‌بندی",
@@ -1289,6 +1299,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
       return [
         item.id,
         item.product_id,
+        `"${(item.sku || '').replace(/"/g, '""')}"`,
         `"${(p?.name_fa || '').replace(/"/g, '""')}"`,
         `"${(p?.name_en || '').replace(/"/g, '""')}"`,
         `"${(p?.category || '').replace(/"/g, '""')}"`,
@@ -1326,6 +1337,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
       return {
         id: item.id,
         product_id: item.product_id,
+        sku: item.sku || '',
         product_name_fa: p?.name_fa || '',
         product_name_en: p?.name_en || '',
         category: p?.category || '',
@@ -1470,14 +1482,15 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     const matchedProd = products.find(p => p.id === item.product_id);
     if (!matchedProd) return false;
 
-    // Search matches product names
+    // Search matches product names, category, or SKU
     const searchString = warehouseSearch.trim().toLowerCase();
     if (!searchString) return true;
 
     return (
       matchedProd.name_fa.toLowerCase().includes(searchString) ||
       matchedProd.name_en.toLowerCase().includes(searchString) ||
-      matchedProd.category?.toLowerCase().includes(searchString)
+      matchedProd.category?.toLowerCase().includes(searchString) ||
+      (item.sku && item.sku.toLowerCase().includes(searchString))
     );
   });
 
@@ -2951,7 +2964,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                         .filter(sz => selectedSizeIds.includes(sz.id))
                                         .map(sz => {
                                           const key = `${col.id}-${sz.id}`;
-                                          const cell = matrixGridState[key] || { stock: 0, price: isEditingProd.base_price, enabled: false };
+                                          const cell = matrixGridState[key] || { stock: 0, price: isEditingProd.base_price, sku: '', enabled: false };
 
                                           return (
                                             <td key={sz.id} className={`p-3 border-r min-w-[140px] transition-all ${darkMode ? 'border-neutral-800' : 'border-neutral-200'} ${cell.enabled ? 'bg-sky-500/5' : (darkMode ? 'bg-neutral-950/10 opacity-60' : 'bg-neutral-50 opacity-60')}`}>
@@ -2986,6 +2999,17 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                                         onChange={(e) => handleCellChange(col.id, sz.id, 'price', e.target.value)}
                                                         className={`w-full bg-transparent text-center focus:outline-none text-[11px] font-bold ${darkMode ? 'text-white' : 'text-neutral-900'}`}
                                                         placeholder={isEditingProd.base_price.toString()}
+                                                      />
+                                                    </div>
+
+                                                    <div className={`flex items-center gap-1 border rounded-md px-1.5 py-1 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'}`}>
+                                                      <span className="text-[9px] text-neutral-500 shrink-0">SKU:</span>
+                                                      <input
+                                                        type="text"
+                                                        value={cell.sku || ''}
+                                                        onChange={(e) => handleCellChange(col.id, sz.id, 'sku', e.target.value)}
+                                                        className="w-full bg-transparent text-center focus:outline-none text-[10px] font-mono font-bold text-amber-400 uppercase"
+                                                        placeholder="SKU..."
                                                       />
                                                     </div>
                                                   </div>
@@ -3107,6 +3131,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                             <th className="p-4 text-right font-bold">{isRtl ? "کالای پوشاک" : "Garment Profile"}</th>
                             <th className="p-4 font-bold">{isRtl ? "رنگ" : "Color"}</th>
                             <th className="p-4 font-bold">{isRtl ? "سایز" : "Size"}</th>
+                            <th className="p-4 font-bold">{isRtl ? "شناسه SKU" : "SKU"}</th>
                             <th className="p-4 font-bold">{isRtl ? "موجودی انبار" : "Stock level"}</th>
                             <th className="p-4 font-bold">{isRtl ? "قیمت تنوع (تومان)" : "Override Price"}</th>
                             <th className="p-4 font-bold">{isRtl ? "عملیات سریع" : "Action"}</th>
@@ -3123,8 +3148,9 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                             // Local edits override
                             const currentLocalStock = localStockEdits[item.id] !== undefined ? localStockEdits[item.id] : item.stock;
                             const currentLocalPrice = localPriceEdits[item.id] !== undefined ? localPriceEdits[item.id] : item.price;
+                            const currentLocalSku = localSkuEdits[item.id] !== undefined ? localSkuEdits[item.id] : (item.sku || '');
 
-                            const isModified = currentLocalStock !== item.stock || currentLocalPrice !== item.price;
+                            const isModified = currentLocalStock !== item.stock || currentLocalPrice !== item.price || currentLocalSku !== (item.sku || '');
 
                             return (
                               <tr key={item.id} className={`border-b transition-colors ${darkMode ? 'border-neutral-800/60 hover:bg-neutral-900/10' : 'border-neutral-200 hover:bg-neutral-50'}`}>
@@ -3160,6 +3186,19 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                   <span className="px-3 py-1 bg-sky-600/10 text-sky-400 font-extrabold border border-sky-500/20 rounded-lg text-xs">
                                     {matchedSize?.name}
                                   </span>
+                                </td>
+
+                                {/* SKU edit inline */}
+                                <td className="p-3">
+                                  <div className="flex items-center justify-center gap-1.5 max-w-[140px] mx-auto">
+                                    <input
+                                      type="text"
+                                      value={currentLocalSku}
+                                      onChange={(e) => handleWarehouseLocalChange(item.id, 'sku', e.target.value)}
+                                      className={`w-28 px-2 py-1 text-center font-mono font-bold text-xs rounded border focus:outline-none focus:ring-1 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} ${isModified ? 'text-amber-400' : (darkMode ? 'text-neutral-300' : 'text-neutral-800')}`}
+                                      placeholder="SKU..."
+                                    />
+                                  </div>
                                 </td>
 
                                 {/* Stock edit inline */}
@@ -3225,7 +3264,8 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
 
                           const currentLocalStock = localStockEdits[item.id] !== undefined ? localStockEdits[item.id] : item.stock;
                           const currentLocalPrice = localPriceEdits[item.id] !== undefined ? localPriceEdits[item.id] : item.price;
-                          const isModified = currentLocalStock !== item.stock || currentLocalPrice !== item.price;
+                          const currentLocalSku = localSkuEdits[item.id] !== undefined ? localSkuEdits[item.id] : (item.sku || '');
+                          const isModified = currentLocalStock !== item.stock || currentLocalPrice !== item.price || currentLocalSku !== (item.sku || '');
 
                           return (
                             <div key={item.id} className="pt-4 first:pt-0 space-y-3">
@@ -3242,7 +3282,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-3 bg-neutral-950/20 p-2.5 rounded-xl border border-neutral-800">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-neutral-950/20 p-2.5 rounded-xl border border-neutral-800">
                                 <div className="space-y-1">
                                   <span className="text-[9px] text-neutral-500 font-bold block">{isRtl ? "موجودی انبار" : "Stock"}</span>
                                   <input
@@ -3260,6 +3300,17 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                     value={currentLocalPrice}
                                     onChange={(e) => handleWarehouseLocalChange(item.id, 'price', e.target.value)}
                                     className="w-full px-2 py-1 text-center font-bold text-xs rounded border bg-neutral-950 border-neutral-800 text-indigo-400 focus:outline-none"
+                                  />
+                                </div>
+
+                                <div className="space-y-1 col-span-2 sm:col-span-1">
+                                  <span className="text-[9px] text-neutral-500 font-bold block">{isRtl ? "کد شناسه کالا (SKU)" : "SKU"}</span>
+                                  <input
+                                    type="text"
+                                    value={currentLocalSku}
+                                    onChange={(e) => handleWarehouseLocalChange(item.id, 'sku', e.target.value)}
+                                    className="w-full px-2 py-1 text-center font-mono font-bold text-xs rounded border bg-neutral-950 border-neutral-800 text-amber-400 focus:outline-none"
+                                    placeholder="SKU..."
                                   />
                                 </div>
                               </div>
@@ -3304,7 +3355,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                   onUpdateInventorySku={async (updatedInventoryItem) => {
                     try {
                       await storageManager.updateInventory(updatedInventoryItem);
-                      const fullInv = storageManager.getInventory();
+                      const fullInv = await storageManager.getInventory();
                       setWarehouseInventory(fullInv);
                       setSuccess(isRtl ? "کد شناسه SKU و اطلاعات بارکد با موفقیت بروزرسانی شد." : "Inventory SKU updated successfully.");
                       setTimeout(() => setSuccess(''), 3000);

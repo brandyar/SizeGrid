@@ -1,22 +1,22 @@
 {
-  "version": "1.4.4",
+  "version": "1.4.5",
   "releaseDate": "2026-08-12",
   "minSupportedVersion": "1.0.0",
   "minimum_version": "1.0.0",
-  "notes": "• اضافه شدن سیستم هوشمند تولید و چاپ بارکد و لیبل انبار پوشاک\n• امکان تنظیم ابعاد اتیکت‌های حرارتی (۵۰x۳۰، ۴۰x۳۰ و سفارشی)\n• پشتیبانی از کدهای SKU اختصاصی، کد QR و بارکد خطی CODE128",
+  "notes": "• مدیریت جامع کدهای شناسه SKU در تمام بخش‌های انبارداری و کارت محصول\n• ویرایش مستقیم SKU از تب ماتریس ۲ بعدی و لیست متغیرهای انبار\n• خواندن خودکار SKU در تولید و چاپ بارکد و لیبل‌های حرارتی",
   "changelog": {
     "fa": [
-      "افزودن ماژول تولید و چاپ مستقیم بارکد و لیبل انبار پوشاک با قابلیت چاپ حرارتی",
-      "پشتیبانی از کدهای شناسه SKU اختصاصی، قیمت، رنگ، سایز و کد QR هوشمند روی اتیکت",
-      "امکان تنظیم پیش‌فرض ابعاد برچسب (۵۰x۳۰ میلی‌متر، ۴۰x۳۰ و سفارشی)",
-      "ارتقای نسخه نرم‌افزار به ۱.۴.۴"
+      "افزودن فیلد SKU قابل ویرایش به متغیرهای انبار و ماتریس ۲ بعدی محصول",
+      "پشتیبانی کامل از ذخیره‌سازی و همگام‌سازی SKU در دیتابیس بومی SQLite و دایرکتوس",
+      "استفاده هوشمند از کد SKU در ساخت بارکد و لیبل‌های حرارتی",
+      "ارتقای نسخه نرم‌افزار به ۱.۴.۵"
     ],
     "en": [
-      "Added clothing inventory barcode and thermal label printing system",
-      "Support for customizable thermal label presets (50x30mm, 40x30mm, etc.)",
-      "Auto SKU generation, QR Code embedding, and thermal printer compatibility",
-      "Upgraded application version to 1.4.4"
+      "Added editable SKU field to inventory items and product 2D matrix tab",
+      "Full SKU persistence & synchronization across local SQLite and Directus cloud",
+      "Integrated SKU into barcode generator and thermal labels",
+      "Upgraded application version to 1.4.5"
     ]
   },
-  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.4"
+  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.5"
 }

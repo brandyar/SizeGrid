@@ -77,7 +77,8 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
             color_id INTEGER,
             size_id INTEGER,
             stock INTEGER,
-            price REAL
+            price REAL,
+            sku TEXT
           );`,
           `CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,6 +104,13 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
             bindValues: []
           }).catch(() => {});
         }
+
+        // Migrate existing DB schema if sku column missing
+        await invoke('plugin:sql|execute', {
+          db: this.dbName,
+          query: `ALTER TABLE inventory ADD COLUMN sku TEXT;`,
+          bindValues: []
+        }).catch(() => {});
 
         this.dbInitialized = true;
       }
@@ -471,7 +479,8 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
         color_id: Number(r.color_id),
         size_id: Number(r.size_id),
         stock: Number(r.stock) || 0,
-        price: Number(r.price) || 0
+        price: Number(r.price) || 0,
+        sku: r.sku || ''
       }));
       this.localFallback.setInventoryCache(inventory);
       return inventory;
@@ -491,8 +500,8 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
         for (const item of items) {
           await invoke('plugin:sql|execute', {
             db: this.dbName,
-            query: `INSERT OR REPLACE INTO inventory (id, product_id, color_id, size_id, stock, price) VALUES (?, ?, ?, ?, ?, ?);`,
-            bindValues: [item.id || Math.floor(Math.random() * 1000000), item.product_id, item.color_id, item.size_id, item.stock, item.price]
+            query: `INSERT OR REPLACE INTO inventory (id, product_id, color_id, size_id, stock, price, sku) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+            bindValues: [item.id || Math.floor(Math.random() * 1000000), item.product_id, item.color_id, item.size_id, item.stock, item.price, item.sku || '']
           }).catch(() => {});
         }
       }
