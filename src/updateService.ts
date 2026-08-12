@@ -244,7 +244,7 @@ class AppUpdateService {
                   fa: faChangelog,
                   en: enChangelog
                 },
-                downloadUrl: data.url || data.downloadUrl || 'https://github.com/tankhor/tankhor-app/releases/latest',
+                downloadUrl: data.url || data.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.2',
                 minimum_version: minVer,
                 isMandatory
               };
@@ -274,7 +274,7 @@ class AppUpdateService {
               'Upgraded version to 1.4.2 for testing automated desktop updates'
             ]
           },
-          downloadUrl: 'https://github.com/tankhor/tankhor-app/releases/latest',
+          downloadUrl: 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.2',
           minimum_version: '1.0.0',
           isMandatory: false
         };

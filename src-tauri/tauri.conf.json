@@ -16,6 +16,11 @@
       "process": {
         "relaunch": true,
         "exit": true
+      },
+      "sql": {
+        "all": true,
+        "execute": true,
+        "select": true
       }
     },
     "updater": {

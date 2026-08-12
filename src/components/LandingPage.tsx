@@ -31,7 +31,13 @@ import {
   Smartphone,
   RefreshCw,
   Layers,
-  Ruler
+  Ruler,
+  Copy,
+  Terminal,
+  X,
+  Download,
+  ShieldAlert,
+  ExternalLink
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -55,6 +61,10 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // macOS Installation Guide Modal state
+  const [showMacModal, setShowMacModal] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState(false);
 
   // Sync Stats State for Header/Architecture showcase
   const [syncStats, setSyncStats] = useState<SyncStats>(storageManager.getSyncStats());
@@ -262,30 +272,25 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
             {isRtl ? "بدون نیاز به اینترنت یا هزینه اشتراک. انبارداری متقاطع سایز/رنگ، ماتریس موجودی و ویجت هوشمند پیشنهاد سایز را روی ویندوز و مک تجربه کنید." : "Run 100% offline with zero subscription fees. Manage garment inventories and size matrices on Windows and macOS."}
           </p>
 
-          {/* Minimalist Desktop Software Download Actions (Windows & macOS - No Linux) */}
+          {/* Minimalist Desktop Software Download Actions (Windows & macOS) */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5" id="download-section">
             <a
-              href="#download-windows"
-              onClick={(e) => {
-                e.preventDefault();
-                alert(isRtl ? "دانلود نسخه ویندوز تن‌خور شروع شد (Tankhor_Setup.exe)" : "Downloading Windows version (Tankhor_Setup.exe)");
-              }}
+              href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.2/Tankhor_1.4.2_x64-setup.exe"
+              target="_blank"
+              rel="noopener noreferrer"
               className="w-full sm:w-auto px-6 py-3.5 font-bold text-xs text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-sky-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Laptop className="w-4 h-4" />
               <span>{isRtl ? "دانلود نسخه ویندوز (Windows .exe)" : "Download for Windows (.exe)"}</span>
             </a>
 
-            <a
-              href="#download-mac"
-              onClick={(e) => {
-                e.preventDefault();
-                alert(isRtl ? "دانلود نسخه مک تن‌خور شروع شد (Tankhor_macOS.dmg)" : "Downloading macOS version (Tankhor_macOS.dmg)");
-              }}
+            <button
+              type="button"
+              onClick={() => setShowMacModal(true)}
               className={`w-full sm:w-auto px-6 py-3.5 font-bold text-xs border rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${darkMode ? 'border-neutral-800 hover:bg-neutral-900 text-neutral-300' : 'border-neutral-200 hover:bg-neutral-100 text-neutral-800'}`}
             >
               <span>{isRtl ? "دانلود نسخه مک (macOS .dmg)" : "Download for macOS (.dmg)"}</span>
-            </a>
+            </button>
           </div>
 
           <p className="text-[11px] text-neutral-500 font-medium">
@@ -786,6 +791,142 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
         </div>
         <p>© 2026 tankhor.com | {isRtl ? "پلتفرم تخصصی مدیریت موجودی ۲ بعدی و پیشنهاد سایز پوشاک" : "Fashion Sizing & Inventory Platform"}</p>
       </footer>
+
+      {/* MAC OS INSTALLATION GUIDE MODAL POPUP */}
+      {showMacModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+          <div 
+            className={`w-full max-w-xl bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-neutral-800 overflow-hidden transform transition-all ${isRtl ? 'rtl' : 'ltr'}`}
+            dir={isRtl ? 'rtl' : 'ltr'}
+          >
+            {/* Header Banner */}
+            <div className="relative p-6 text-white bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-b border-white/10">
+              <div className="flex items-start justify-between relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-500/20 backdrop-blur-md rounded-2xl text-indigo-400 border border-indigo-500/30">
+                    <Terminal className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 bg-sky-500/20 text-sky-300 text-[10px] font-extrabold rounded-full uppercase tracking-wider mb-1">
+                      macOS Installation Guide
+                    </span>
+                    <h2 className="text-base sm:text-lg font-black text-white">
+                      {isRtl ? "راهنمای دانلود و اجرای نسخه مک (macOS)" : "macOS Download & Fix Guide"}
+                    </h2>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowMacModal(false)}
+                  className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
+                  title={isRtl ? "بستن" : "Close"}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 text-slate-800 dark:text-neutral-200 text-xs">
+              
+              {/* Direct Download Button */}
+              <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    {isRtl ? "۱. دریافت مستقیم فایل مک (DMG)" : "1. Download macOS DMG"}
+                  </span>
+                  <span className="text-[10px] font-mono bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-bold">
+                    v1.4.2 (Apple Silicon / Intel)
+                  </span>
+                </div>
+                <a
+                  href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.2/Tankhor_1.4.2_aarch64.dmg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-extrabold rounded-xl shadow-lg shadow-sky-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isRtl ? "دانلود فایل Tankhor_1.4.2_aarch64.dmg" : "Download Tankhor_1.4.2_aarch64.dmg"}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              {/* Terminal Command Box */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-sm text-slate-900 dark:text-white">
+                    {isRtl ? "۲. رفع خطای امنیتی قرنطینه اپل (Quarantine Fix)" : "2. Remove macOS Quarantine Flag"}
+                  </span>
+                  <span className="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                    {isRtl ? "مهم: فقط یک‌بار اجرا کنید" : "Run once in Terminal"}
+                  </span>
+                </div>
+
+                <p className="text-slate-600 dark:text-neutral-400 leading-relaxed">
+                  {isRtl 
+                    ? "پس از دانلود و انتقال برنامه به پوشه Applications، به دلیل عدم وجود لایسنس سالانه $99 اپل، سیستم‌عامل مک ممکن است خطای Damaged یا Unidentified Developer بدهد. برای حل این مشکل، دستور زیر را کپی کرده و در برنامه ترمینال (Terminal) مک وارد کرده و Enter را بزنید:"
+                    : "After moving Tankhor.app to /Applications, macOS Gatekeeper may show a warning. Copy & paste this command into Terminal to fix it:"}
+                </p>
+
+                {/* Command display box with copy button */}
+                <div className="bg-slate-950 text-emerald-400 p-3.5 rounded-2xl font-mono text-[11px] sm:text-xs flex items-center justify-between gap-2 border border-slate-800 shadow-inner">
+                  <div className="overflow-x-auto select-all whitespace-nowrap py-1">
+                    <code>sudo xattr -rd com.apple.quarantine /Applications/Tankhor.app</code>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText("sudo xattr -rd com.apple.quarantine /Applications/Tankhor.app");
+                      setCopiedCmd(true);
+                      setTimeout(() => setCopiedCmd(false), 3000);
+                    }}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 cursor-pointer ${
+                      copiedCmd 
+                        ? 'bg-emerald-600 text-white shadow-md' 
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                    }`}
+                  >
+                    {copiedCmd ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-white" />
+                        <span>{isRtl ? "کپی شد! ✓" : "Copied! ✓"}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{isRtl ? "کپی دستور" : "Copy"}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Step By Step Summary List */}
+              <div className="p-4 bg-slate-50 dark:bg-neutral-950/60 rounded-2xl border border-slate-200/60 dark:border-neutral-800 space-y-2">
+                <span className="font-bold text-slate-800 dark:text-neutral-300 block text-xs">
+                  {isRtl ? "مراحل کوتاه اجرای نرم‌افزار روی مک:" : "Quick Steps:"}
+                </span>
+                <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-slate-600 dark:text-neutral-400 leading-relaxed">
+                  <li>{isRtl ? "فایل DMG را باز کرده و Tankhor را به پوشه Applications بکشید." : "Open DMG & drag Tankhor to Applications folder."}</li>
+                  <li>{isRtl ? "برنامه Terminal را از طریق Spotlight (دکمه‌های Cmd + Space) باز کنید." : "Open Terminal via Spotlight (Cmd + Space)."}</li>
+                  <li>{isRtl ? "دستور فوق را Paste کرده، Enter بزنید و رمز عبور مک خود را تایپ کنید." : "Paste command, press Enter, and enter Mac password."}</li>
+                  <li>{isRtl ? "برنامه تن‌خور اکنون کاملاً و بدون خطا اجرا خواهد شد." : "Launch Tankhor from Applications."}</li>
+                </ol>
+              </div>
+
+              {/* Close Button */}
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowMacModal(false)}
+                  className="w-full py-3 bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-300 font-bold rounded-xl transition-all cursor-pointer text-xs"
+                >
+                  {isRtl ? "متوجه شدم و بستن راهنما" : "Got it & Close"}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

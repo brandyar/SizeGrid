@@ -29,7 +29,6 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
 
-      // Check if Tauri plugin:sql invoke exists
       const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
 
       if (typeof invoke === 'function') {
@@ -41,8 +40,10 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
             description_fa TEXT,
             description_en TEXT,
             category TEXT,
+            category_id INTEGER,
             base_price REAL,
             image TEXT,
+            clothing_type_slug TEXT,
             size_guide_template_id INTEGER,
             created_by TEXT,
             is_active INTEGER DEFAULT 1
@@ -116,6 +117,27 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     }
   }
 
+  private async querySql<T>(query: string, bindValues: any[] = []): Promise<T[] | null> {
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        const rows = await invoke('plugin:sql|select', {
+          db: this.dbName,
+          query,
+          bindValues
+        });
+        if (Array.isArray(rows)) {
+          return rows as T[];
+        }
+      }
+    } catch (e) {
+      // Ignore fallback silently
+    }
+    return null;
+  }
+
   // --- META & MODE ---
   getMode(): StorageMode {
     return this.localFallback.getMode();
@@ -128,12 +150,31 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
   // --- PRODUCTS ---
   async getProducts(): Promise<Product[]> {
     await this.ensureDbReady();
+    const rows = await this.querySql<any>('SELECT * FROM products WHERE is_active = 1 OR is_active IS NULL');
+    if (rows && rows.length > 0) {
+      const products: Product[] = rows.map(r => ({
+        id: Number(r.id),
+        name_fa: r.name_fa || '',
+        name_en: r.name_en || r.name_fa || '',
+        description_fa: r.description_fa || '',
+        description_en: r.description_en || '',
+        category: r.category || '',
+        category_id: r.category_id ? Number(r.category_id) : undefined,
+        base_price: Number(r.base_price) || 0,
+        image: r.image || '',
+        clothing_type_slug: (r.clothing_type_slug as ClothingTypeSlug) || 'tops',
+        size_guide_template_id: r.size_guide_template_id ? Number(r.size_guide_template_id) : null
+      }));
+      this.localFallback.setProductsCache(products);
+      return products;
+    }
     return this.localFallback.getProducts();
   }
 
   async getProductById(id: number): Promise<Product | null> {
     await this.ensureDbReady();
-    return this.localFallback.getProductById(id);
+    const products = await this.getProducts();
+    return products.find(p => p.id === id) || null;
   }
 
   async saveProduct(product: Partial<Product> & { name_fa: string; base_price: number }): Promise<Product> {
@@ -144,12 +185,12 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
-          query: `INSERT OR REPLACE INTO products (id, name_fa, name_en, description_fa, description_en, category, base_price, image, size_guide_template_id, created_by, is_active)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          query: `INSERT OR REPLACE INTO products (id, name_fa, name_en, description_fa, description_en, category, category_id, base_price, image, clothing_type_slug, size_guide_template_id, created_by, is_active)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
           bindValues: [
             saved.id,
             saved.name_fa,
@@ -157,8 +198,10 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
             saved.description_fa || '',
             saved.description_en || '',
             saved.category,
+            saved.category_id || null,
             saved.base_price,
             saved.image || '',
+            saved.clothing_type_slug || 'tops',
             saved.size_guide_template_id || null,
             saved.created_by || 'local_user',
             1
@@ -179,11 +222,16 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
           query: `DELETE FROM products WHERE id = ?;`,
+          bindValues: [id]
+        }).catch(() => {});
+        await invoke('plugin:sql|execute', {
+          db: this.dbName,
+          query: `DELETE FROM inventory WHERE product_id = ?;`,
           bindValues: [id]
         }).catch(() => {});
       }
@@ -197,6 +245,18 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
   // --- CATEGORIES ---
   async getCategories(): Promise<Category[]> {
     await this.ensureDbReady();
+    const rows = await this.querySql<any>('SELECT * FROM categories');
+    if (rows && rows.length > 0) {
+      const cats: Category[] = rows.map(r => ({
+        id: Number(r.id),
+        name: r.name || '',
+        name_fa: r.name || '',
+        system_type: Number(r.system_type) || 1,
+        clothing_type_slug: (r.clothing_type_slug as ClothingTypeSlug) || 'tops'
+      }));
+      this.localFallback.setCategoriesCache(cats);
+      return cats;
+    }
     return this.localFallback.getCategories();
   }
 
@@ -207,7 +267,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
@@ -224,12 +284,35 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
 
   async deleteCategory(id: number): Promise<boolean> {
     await this.ensureDbReady();
-    return this.localFallback.deleteCategory(id);
+    const res = await this.localFallback.deleteCategory(id);
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        await invoke('plugin:sql|execute', {
+          db: this.dbName,
+          query: `DELETE FROM categories WHERE id = ?;`,
+          bindValues: [id]
+        }).catch(() => {});
+      }
+    } catch (e) {}
+    return res;
   }
 
   // --- SIZES & COLORS ---
   async getSizes(): Promise<Size[]> {
     await this.ensureDbReady();
+    const rows = await this.querySql<any>('SELECT * FROM sizes ORDER BY sort_order ASC');
+    if (rows && rows.length > 0) {
+      const sizes: Size[] = rows.map(r => ({
+        id: Number(r.id),
+        name: r.name || '',
+        sort_order: Number(r.sort_order) || 10
+      }));
+      this.localFallback.setSizesCache(sizes);
+      return sizes;
+    }
     return this.localFallback.getSizes();
   }
 
@@ -240,7 +323,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
@@ -257,11 +340,35 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
 
   async deleteSize(id: number): Promise<boolean> {
     await this.ensureDbReady();
-    return this.localFallback.deleteSize(id);
+    const res = await this.localFallback.deleteSize(id);
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        await invoke('plugin:sql|execute', {
+          db: this.dbName,
+          query: `DELETE FROM sizes WHERE id = ?;`,
+          bindValues: [id]
+        }).catch(() => {});
+      }
+    } catch (e) {}
+    return res;
   }
 
   async getColors(): Promise<Color[]> {
     await this.ensureDbReady();
+    const rows = await this.querySql<any>('SELECT * FROM colors');
+    if (rows && rows.length > 0) {
+      const colors: Color[] = rows.map(r => ({
+        id: Number(r.id),
+        name_fa: r.name_fa || '',
+        name_en: r.name_en || r.name_fa || '',
+        hex_code: r.hex_code || '#000000'
+      }));
+      this.localFallback.setColorsCache(colors);
+      return colors;
+    }
     return this.localFallback.getColors();
   }
 
@@ -272,7 +379,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
@@ -290,6 +397,23 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
   // --- SIZE GUIDE TEMPLATES ---
   async getSizeGuideTemplates(): Promise<SizeGuideTemplate[]> {
     await this.ensureDbReady();
+    const rows = await this.querySql<any>('SELECT * FROM size_templates');
+    if (rows && rows.length > 0) {
+      const templates: SizeGuideTemplate[] = rows.map(r => {
+        let measurements = [];
+        try {
+          measurements = typeof r.measurements === 'string' ? JSON.parse(r.measurements) : (r.measurements || []);
+        } catch (e) {}
+        return {
+          id: Number(r.id),
+          name: r.name || '',
+          clothing_type_slug: (r.clothing_type_slug as ClothingTypeSlug) || 'tops',
+          measurements
+        };
+      });
+      this.localFallback.setTemplatesCache(templates);
+      return templates;
+    }
     return this.localFallback.getSizeGuideTemplates();
   }
 
@@ -300,7 +424,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
@@ -317,12 +441,41 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
 
   async deleteSizeGuideTemplate(id: number): Promise<boolean> {
     await this.ensureDbReady();
-    return this.localFallback.deleteSizeGuideTemplate(id);
+    const res = await this.localFallback.deleteSizeGuideTemplate(id);
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        await invoke('plugin:sql|execute', {
+          db: this.dbName,
+          query: `DELETE FROM size_templates WHERE id = ?;`,
+          bindValues: [id]
+        }).catch(() => {});
+      }
+    } catch (e) {}
+    return res;
   }
 
   // --- INVENTORY ---
   async getInventory(productId?: number): Promise<InventoryItem[]> {
     await this.ensureDbReady();
+    const query = productId !== undefined 
+      ? `SELECT * FROM inventory WHERE product_id = ${productId}` 
+      : `SELECT * FROM inventory`;
+    const rows = await this.querySql<any>(query);
+    if (rows && rows.length > 0) {
+      const inventory: InventoryItem[] = rows.map(r => ({
+        id: Number(r.id),
+        product_id: Number(r.product_id),
+        color_id: Number(r.color_id),
+        size_id: Number(r.size_id),
+        stock: Number(r.stock) || 0,
+        price: Number(r.price) || 0
+      }));
+      this.localFallback.setInventoryCache(inventory);
+      return inventory;
+    }
     return this.localFallback.getInventory(productId);
   }
 
@@ -333,7 +486,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         for (const item of items) {
           await invoke('plugin:sql|execute', {
@@ -358,12 +511,31 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
   // --- ORDERS ---
   async getOrders(): Promise<Order[]> {
     await this.ensureDbReady();
+    const rows = await this.querySql<any>('SELECT * FROM orders ORDER BY date_created DESC');
+    if (rows && rows.length > 0) {
+      const orders: Order[] = rows.map(r => {
+        let items = [];
+        try {
+          items = typeof r.order_items === 'string' ? JSON.parse(r.order_items) : (r.order_items || []);
+        } catch (e) {}
+        return {
+          id: Number(r.id),
+          status: (r.status as OrderStatus) || 'published',
+          order_total: Number(r.order_total) || 0,
+          date_created: r.date_created || new Date().toISOString(),
+          order_items: items
+        };
+      });
+      this.localFallback.setOrdersCache(orders);
+      return orders;
+    }
     return this.localFallback.getOrders();
   }
 
   async getOrderById(id: number): Promise<Order | null> {
     await this.ensureDbReady();
-    return this.localFallback.getOrderById(id);
+    const orders = await this.getOrders();
+    return orders.find(o => o.id === id) || null;
   }
 
   async createOrder(orderInput: CreateOrderInput): Promise<Order> {
@@ -373,7 +545,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
@@ -402,7 +574,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
@@ -424,7 +596,7 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__;
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
       if (typeof invoke === 'function') {
         await invoke('plugin:sql|execute', {
           db: this.dbName,
