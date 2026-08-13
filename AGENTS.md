@@ -38,6 +38,9 @@
 6. **مدیریت وابستگی‌ها و فایل lock (Package Lock Synchronization):**
    - پس از اضافه یا بروزرسانی هر پکیج جدید در `package.json` (مانند `zustand` یا هر کتابخانه جدید)، فایل `package-lock.json` باید حتماً همگام‌سازی شود تا فرآیند ساخت و دیپلوی در خطوط لوله CI/CD (مانند Docker / Nixpacks / Coolify که دستور `npm ci` را اجرا می‌کنند) بدون خطا انجام پذیرد.
 
+7. **همگام‌سازی اجباری نسخه نیتیو دسکتاپ Tauri (Version Bump Rule):**
+   - در هر نوبت ارتقای نسخه اپلیکیشن (Bump Version)، **باید حتماً** اسکریپت `npm run sync-version` اجرا شود تا نسخه نیتیو دسکتاپ در فایل‌های `src-tauri/tauri.conf.json` و `src-tauri/Cargo.toml` به‌صورت خودکار با `package.json` و `src/version.ts` همگام شود و هیچ‌گاه ناهماهنگی نسخه‌ای بین نسخه وب و نیتیو Tauri رخ ندهد.
+
 ---
 
 ## 🎨 قوانین UI/UX و زبان
