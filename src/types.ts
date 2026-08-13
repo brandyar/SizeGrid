@@ -11,6 +11,8 @@ export interface User {
 
 export interface Color {
   id: number;
+  local_uuid?: string;
+  updated_at?: string;
   name_fa: string;
   name_en: string;
   hex_code: string;
@@ -26,6 +28,8 @@ export interface ClothingType {
 
 export interface Category {
   id: number;
+  local_uuid?: string;
+  updated_at?: string;
   name: string;
   name_fa?: string;
   slug?: string;
@@ -36,6 +40,8 @@ export interface Category {
 
 export interface Size {
   id: number;
+  local_uuid?: string;
+  updated_at?: string;
   name: string;
   sort_order: number;
   user_created?: string | null;
@@ -59,6 +65,8 @@ export interface SizeGuideSchema {
 
 export interface Product {
   id: number;
+  local_uuid?: string;
+  updated_at?: string;
   name_fa: string;
   name_en: string;
   description_fa?: string;
@@ -103,6 +111,8 @@ export interface SizeGuideTemplateItem {
 
 export interface SizeGuideTemplate {
   id: number;
+  local_uuid?: string;
+  updated_at?: string;
   name: string;
   clothing_type_slug?: ClothingTypeSlug;
   measurements: SizeGuideTemplateItem[]; // Array of size rules
@@ -111,6 +121,8 @@ export interface SizeGuideTemplate {
 
 export interface InventoryItem {
   id: number;
+  local_uuid?: string;
+  updated_at?: string;
   product_id: number;
   color_id: number;
   size_id: number;
@@ -173,6 +185,8 @@ export interface OrderItem {
 
 export interface Order {
   id: number;
+  local_uuid?: string;
+  updated_at?: string;
   status: OrderStatus | string;
   sort?: number;
   order_total: number;

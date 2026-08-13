@@ -1,10 +1,11 @@
 import { AppVersionInfo, UpdateState, UpdateCheckStatus } from './types';
 import { isDesktopEnv } from './utils/desktop';
+import { APP_VERSION } from './version';
 
 // Default base version string of the app binary
-const BASE_APP_VERSION = '1.4.5';
+export const CURRENT_APP_VERSION = APP_VERSION;
 
-export const CURRENT_APP_VERSION = BASE_APP_VERSION;
+const UPDATE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache TTL to avoid GitHub API rate limits
 
 class AppUpdateService {
   private state: UpdateState = {
@@ -102,8 +103,34 @@ class AppUpdateService {
   /**
    * Check for software updates
    * @param isStartupCheck Whether this was initiated silently at app launch
+   * @param forceRefresh Whether to bypass local TTL cache and query remote servers directly
    */
-  public async checkForUpdates(isStartupCheck = false): Promise<UpdateState> {
+  public async checkForUpdates(isStartupCheck = false, forceRefresh = false): Promise<UpdateState> {
+    // Return cached result if checked within TTL window and not forcing refresh
+    if (!forceRefresh && typeof localStorage !== 'undefined') {
+      const savedLastCheck = localStorage.getItem('tankhor_last_update_check');
+      const cachedReleaseStr = localStorage.getItem('tankhor_cached_update_release');
+      if (savedLastCheck && cachedReleaseStr) {
+        const lastCheckTs = parseInt(savedLastCheck, 10);
+        if (!isNaN(lastCheckTs) && (Date.now() - lastCheckTs < UPDATE_CACHE_TTL_MS)) {
+          try {
+            const cachedRelease: AppVersionInfo = JSON.parse(cachedReleaseStr);
+            const hasNewVersion = this.compareVersions(this.state.currentVersion, cachedRelease.version) > 0;
+            this.state.status = hasNewVersion ? 'update_available' : 'up_to_date';
+            this.state.latestRelease = cachedRelease;
+            this.state.lastCheckedTime = lastCheckTs;
+            if (isStartupCheck && (hasNewVersion || cachedRelease.isMandatory)) {
+              this.state.showStartupModal = true;
+            }
+            this.notifyListeners();
+            return this.getState();
+          } catch (e) {
+            // Ignore parse errors and fall through
+          }
+        }
+      }
+    }
+
     this.state.status = 'checking';
     this.state.errorMessage = null;
     this.notifyListeners();
@@ -297,22 +324,22 @@ class AppUpdateService {
       // Default fallback release object if offline or endpoints unreachable
       if (!remoteRelease) {
         remoteRelease = {
-          version: '1.4.3',
-          releaseDate: '2026-08-12',
-          notes: '• همگام‌سازی کامل فایل‌های قفل و وابستگی‌ها\n• ارتقای دیتابیس بومی SQLite و بهبود پایداری در حالت آفلاین\n• بروزرسانی نسخه برنامه دسکتاپ به ۱.۴.۳',
+          version: '1.4.6',
+          releaseDate: '2026-08-13',
+          notes: '• معماری جدید کامپوننت‌های داشبورد و شکستن فایل یکپارچه به زیرکامپوننت‌های ماژولار\n• مدیریت مرکزی حالت‌های داشبورد و ماتریس انبار با Zustand\n• بهبود سرعت رندر، بهینه‌سازی حافظه و کارایی لایه ذخیره‌سازی',
           changelog: {
             fa: [
-              'همگام‌سازی کامل فایل‌های قفل و وابستگی‌های پکیج‌ها (package-lock.json) جهت بهبود فرآیند دیپلوی',
-              'ارتقای عملکرد دیتابیس بومی SQLite برای ذخیره‌سازی آفلاین و مطمئن اطلاعات در سیستم‌عامل‌های ویندوز و مک',
-              'ارتقای نسخه نرم‌افزار به ۱.۴.۳ جهت سنجش دریافت بروزرسانی خودکار دسکتاپ'
+              'شکستن فایل غول‌پیکر Dashboard.tsx به کامپوننت‌های ماژولار',
+              'مدیریت متمرکز و بهینه stateهای انبار و ماتریس ۲ بعدی با Zustand Store',
+              'ارتقای نسخه نرم‌افزار به ۱.۴.۶ جهت سنجش دریافت بروزرسانی خودکار دسکتاپ'
             ],
             en: [
-              'Synchronized package-lock.json dependencies for seamless multi-platform deployments',
-              'Enhanced native SQLite storage adapter for robust offline data persistence on Windows & macOS',
-              'Upgraded desktop application version to 1.4.3 to verify automated updates'
+              'Modularized monolithic Dashboard component into smaller components',
+              'Centralized state management for warehouse inventory and 2D matrix using Zustand Store',
+              'Upgraded desktop application version to 1.4.6 to verify automated updates'
             ]
           },
-          downloadUrl: 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.3',
+          downloadUrl: 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.6',
           minimum_version: '1.0.0',
           isMandatory: false
         };
@@ -321,7 +348,12 @@ class AppUpdateService {
       const hasNewVersion = this.compareVersions(this.state.currentVersion, remoteRelease.version) > 0;
 
       this.state.lastCheckedTime = Date.now();
-      localStorage.setItem('tankhor_last_update_check', this.state.lastCheckedTime.toString());
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('tankhor_last_update_check', this.state.lastCheckedTime.toString());
+        if (remoteRelease) {
+          localStorage.setItem('tankhor_cached_update_release', JSON.stringify(remoteRelease));
+        }
+      }
 
       if (hasNewVersion) {
         this.state.status = 'update_available';

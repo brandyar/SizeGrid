@@ -1,5 +1,7 @@
 import { Product, Category, Size, Color, SizeGuideTemplate, InventoryItem, ClothingTypeSlug, DiffSyncPayload, Order, OrderItem, CreateOrderInput, OrderStatus } from '../types';
 import { IStorageAdapter, StorageMode, SyncQueueItem, SyncStats } from './types';
+import { idbGet, idbSet } from './indexedDBHelper';
+import { generateUUID } from '../utils/uuid';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'tankhor_local_products_v1',
@@ -180,15 +182,18 @@ export class LocalStorageAdapter implements IStorageAdapter {
   private setItem<T>(key: string, value: T): void {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      idbSet(key, value).catch(() => {});
     } catch (e) {
       console.error(`Error writing key ${key} to LocalStorage`, e);
+      // Fallback: write strictly to IndexedDB if localStorage quota exceeded
+      idbSet(key, value).catch(() => {});
     }
   }
 
   private recordSyncQueueItem(entityType: SyncQueueItem['entityType'], entityId: number | string, operation: SyncQueueItem['operation'], payload: any) {
     const queue = this.getItem<SyncQueueItem[]>(STORAGE_KEYS.SYNC_QUEUE, []);
     const newItem: SyncQueueItem = {
-      id: `queue_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `queue_${generateUUID()}`,
       entityType,
       entityId,
       operation,
@@ -222,15 +227,25 @@ export class LocalStorageAdapter implements IStorageAdapter {
   async saveProduct(productData: Partial<Product> & { name_fa: string; base_price: number }): Promise<Product> {
     const products = await this.getProducts();
     let savedProduct: Product;
+    const nowIso = new Date().toISOString();
 
     if (productData.id) {
       // Update existing
       const index = products.findIndex(p => p.id === productData.id);
       if (index !== -1) {
-        savedProduct = { ...products[index], ...productData };
+        savedProduct = { 
+          ...products[index], 
+          ...productData, 
+          local_uuid: products[index].local_uuid || productData.local_uuid || generateUUID(),
+          updated_at: nowIso 
+        };
         products[index] = savedProduct;
       } else {
-        savedProduct = { ...productData } as Product;
+        savedProduct = { 
+          ...productData, 
+          local_uuid: productData.local_uuid || generateUUID(),
+          updated_at: nowIso 
+        } as Product;
         products.push(savedProduct);
       }
       this.recordSyncQueueItem('product', savedProduct.id, 'update', savedProduct);
@@ -239,6 +254,8 @@ export class LocalStorageAdapter implements IStorageAdapter {
       const newId = products.length > 0 ? Math.max(...products.map(p => Number(p.id) || 0)) + 1 : 101;
       savedProduct = {
         id: newId,
+        local_uuid: productData.local_uuid || generateUUID(),
+        updated_at: nowIso,
         name_fa: productData.name_fa,
         name_en: productData.name_en || productData.name_fa,
         description_fa: productData.description_fa || '',
@@ -280,8 +297,11 @@ export class LocalStorageAdapter implements IStorageAdapter {
   async saveCategory(name: string, systemType: number = 1, clothingTypeSlug: ClothingTypeSlug = 'tops'): Promise<Category> {
     const categories = await this.getCategories();
     const newId = categories.length > 0 ? Math.max(...categories.map(c => Number(c.id) || 0)) + 1 : 1;
+    const nowIso = new Date().toISOString();
     const newCat: Category = {
       id: newId,
+      local_uuid: generateUUID(),
+      updated_at: nowIso,
       name,
       name_fa: name,
       slug: name.toLowerCase().replace(/\s+/g, '-'),
@@ -313,7 +333,8 @@ export class LocalStorageAdapter implements IStorageAdapter {
     if (existing) return existing;
 
     const newId = sizes.length > 0 ? Math.max(...sizes.map(s => Number(s.id) || 0)) + 1 : 1;
-    const newSize: Size = { id: newId, name, sort_order: sortOrder };
+    const nowIso = new Date().toISOString();
+    const newSize: Size = { id: newId, local_uuid: generateUUID(), updated_at: nowIso, name, sort_order: sortOrder };
     sizes.push(newSize);
     this.setItem(STORAGE_KEYS.SIZES, sizes);
     this.recordSyncQueueItem('size', newSize.id, 'create', newSize);
@@ -335,7 +356,8 @@ export class LocalStorageAdapter implements IStorageAdapter {
   async saveColor(nameFa: string, nameEn: string, hexCode: string): Promise<Color> {
     const colors = await this.getColors();
     const newId = colors.length > 0 ? Math.max(...colors.map(c => Number(c.id) || 0)) + 1 : 1;
-    const newColor: Color = { id: newId, name_fa: nameFa, name_en: nameEn || nameFa, hex_code: hexCode };
+    const nowIso = new Date().toISOString();
+    const newColor: Color = { id: newId, local_uuid: generateUUID(), updated_at: nowIso, name_fa: nameFa, name_en: nameEn || nameFa, hex_code: hexCode };
     colors.push(newColor);
     this.setItem(STORAGE_KEYS.COLORS, colors);
     this.recordSyncQueueItem('color', newColor.id, 'create', newColor);
@@ -350,14 +372,24 @@ export class LocalStorageAdapter implements IStorageAdapter {
   async saveSizeGuideTemplate(templateData: Omit<SizeGuideTemplate, 'id'> & { id?: number }): Promise<SizeGuideTemplate> {
     const templates = await this.getSizeGuideTemplates();
     let saved: SizeGuideTemplate;
+    const nowIso = new Date().toISOString();
 
     if (templateData.id) {
       const idx = templates.findIndex(t => t.id === templateData.id);
       if (idx !== -1) {
-        saved = { ...templates[idx], ...templateData } as SizeGuideTemplate;
+        saved = { 
+          ...templates[idx], 
+          ...templateData, 
+          local_uuid: templates[idx].local_uuid || templateData.local_uuid || generateUUID(),
+          updated_at: nowIso 
+        } as SizeGuideTemplate;
         templates[idx] = saved;
       } else {
-        saved = { ...templateData } as SizeGuideTemplate;
+        saved = { 
+          ...templateData, 
+          local_uuid: templateData.local_uuid || generateUUID(),
+          updated_at: nowIso 
+        } as SizeGuideTemplate;
         templates.push(saved);
       }
       this.recordSyncQueueItem('size_template', saved.id, 'update', saved);
@@ -365,6 +397,8 @@ export class LocalStorageAdapter implements IStorageAdapter {
       const newId = templates.length > 0 ? Math.max(...templates.map(t => Number(t.id) || 0)) + 1 : 1;
       saved = {
         id: newId,
+        local_uuid: templateData.local_uuid || generateUUID(),
+        updated_at: nowIso,
         name: templateData.name,
         clothing_type_slug: templateData.clothing_type_slug || 'tops',
         measurements: templateData.measurements || []

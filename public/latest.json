@@ -1,21 +1,21 @@
 {
-  "version": "1.4.2",
-  "notes": "• لوگوی جدید و اختصاصی تن‌خور (حالت روشن و تاریک)\n• افزودن قابلیت اکسپورت و خروجی کامل انبار (CSV / JSON)\n• بهبود عملکرد و تست فرآیند بروزرسانی خودکار دسکتاپ",
-  "pub_date": "2026-08-11T10:00:00Z",
+  "version": "1.4.6",
+  "notes": "• معماری جدید کامپوننت‌های داشبورد و شکستن فایل یکپارچه به زیرکامپوننت‌های ماژولار\n• مدیریت مرکزی حالت‌های داشبورد و ماتریس انبار با Zustand\n• بهبود سرعت رندر، بهینه‌سازی حافظه و کارایی لایه ذخیره‌سازی",
+  "pub_date": "2026-08-13T10:00:00Z",
   "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y=",
-  "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.2/tankhor_1.4.2_x64-setup.nsis.zip",
+  "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_x64-setup.exe",
   "minimum_version": "1.0.0",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.2/tankhor_1.4.2_x64-setup.nsis.zip",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_x64-setup.exe",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     },
     "darwin-x86_64": {
-      "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.2/tankhor_1.4.2_x64.app.tar.gz",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_x64.dmg",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     },
     "darwin-aarch64": {
-      "url": "https://github.com/tankhor/tankhor-app/releases/download/v1.4.2/tankhor_1.4.2_aarch64.app.tar.gz",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_aarch64.dmg",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     }
   }

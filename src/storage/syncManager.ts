@@ -160,7 +160,12 @@ export class StorageSyncManager implements IStorageAdapter {
       // 2. Sync Categories (Local -> Cloud)
       const catIdMap = new Map<number, number>(); // localId -> cloudId
       for (const lc of localCats) {
-        const cloudCatMatch = cloudCats.find(cc => cc.id === lc.id || cc.name === lc.name || cc.name_fa === lc.name);
+        const cloudCatMatch = cloudCats.find(cc => 
+          (lc.local_uuid && cc.local_uuid === lc.local_uuid) || 
+          cc.id === lc.id || 
+          cc.name === lc.name || 
+          cc.name_fa === lc.name
+        );
         if (cloudCatMatch) {
           catIdMap.set(lc.id, cloudCatMatch.id);
         } else {
@@ -177,7 +182,11 @@ export class StorageSyncManager implements IStorageAdapter {
       // 3. Sync Sizes (Local -> Cloud)
       const sizeIdMap = new Map<number, number>(); // localId -> cloudId
       for (const ls of localSizes) {
-        const cloudSizeMatch = cloudSizes.find(cs => cs.id === ls.id || cs.name.toLowerCase() === ls.name.toLowerCase());
+        const cloudSizeMatch = cloudSizes.find(cs => 
+          (ls.local_uuid && cs.local_uuid === ls.local_uuid) || 
+          cs.id === ls.id || 
+          cs.name.toLowerCase() === ls.name.toLowerCase()
+        );
         if (cloudSizeMatch) {
           sizeIdMap.set(ls.id, cloudSizeMatch.id);
         } else {
@@ -194,7 +203,11 @@ export class StorageSyncManager implements IStorageAdapter {
       // 4. Sync Colors (Local -> Cloud)
       const colorIdMap = new Map<number, number>(); // localId -> cloudId
       for (const lcol of localColors) {
-        const cloudColorMatch = cloudColors.find(cc => cc.id === lcol.id || cc.name_fa === lcol.name_fa);
+        const cloudColorMatch = cloudColors.find(cc => 
+          (lcol.local_uuid && cc.local_uuid === lcol.local_uuid) || 
+          cc.id === lcol.id || 
+          cc.name_fa === lcol.name_fa
+        );
         if (cloudColorMatch) {
           colorIdMap.set(lcol.id, cloudColorMatch.id);
         } else {
@@ -208,16 +221,26 @@ export class StorageSyncManager implements IStorageAdapter {
         }
       }
 
-      // 5. Sync Size Guide Templates (Local -> Cloud)
+      // 5. Sync Size Guide Templates (Local -> Cloud with Timestamp Conflict Resolution)
       const tplIdMap = new Map<number, number>(); // localId -> cloudId
       for (const lt of localTpls) {
-        const cloudTplMatch = cloudTpls.find(ct => ct.id === lt.id || ct.name === lt.name);
+        const cloudTplMatch = cloudTpls.find(ct => 
+          (lt.local_uuid && ct.local_uuid === lt.local_uuid) || 
+          ct.id === lt.id || 
+          ct.name === lt.name
+        );
         if (cloudTplMatch) {
           tplIdMap.set(lt.id, cloudTplMatch.id);
-          try {
-            await DirectusAPI.updateSizeGuideTemplate(cloudTplMatch.id, lt.name, lt.measurements || [], lt.clothing_type_slug || 'tops');
-          } catch (e) {
-            console.warn('Failed to update cloud template:', e);
+          const localTime = lt.updated_at ? new Date(lt.updated_at).getTime() : 0;
+          const cloudTime = (cloudTplMatch.updated_at || (cloudTplMatch as any).date_updated) ? new Date(cloudTplMatch.updated_at || (cloudTplMatch as any).date_updated).getTime() : 0;
+
+          if (localTime >= cloudTime) {
+            try {
+              await DirectusAPI.updateSizeGuideTemplate(cloudTplMatch.id, lt.name, lt.measurements || [], lt.clothing_type_slug || 'tops');
+              syncedCount++;
+            } catch (e) {
+              console.warn('Failed to update cloud template:', e);
+            }
           }
         } else {
           try {
@@ -230,14 +253,14 @@ export class StorageSyncManager implements IStorageAdapter {
         }
       }
 
-      // 6. Two-Way Sync Products and Inventory Matrix
+      // 6. Two-Way Sync Products and Inventory Matrix with Timestamp Conflict Resolution
       const prodIdMap = new Map<number, number>(); // localProductId -> cloudProductId
 
       for (const lp of localProds) {
         const resolvedCatId = lp.category_id ? (catIdMap.get(lp.category_id) || lp.category_id) : undefined;
         const resolvedTplId = lp.size_guide_template_id ? (tplIdMap.get(lp.size_guide_template_id) || lp.size_guide_template_id) : undefined;
 
-        let cloudMatch = cloudProds.find(cp => cp.id === lp.id);
+        let cloudMatch = cloudProds.find(cp => (lp.local_uuid && cp.local_uuid === lp.local_uuid) || cp.id === lp.id);
         if (!cloudMatch) {
           cloudMatch = cloudProds.find(cp => cp.name_fa === lp.name_fa || (cp.name_en && cp.name_en === lp.name_en));
         }
@@ -245,14 +268,22 @@ export class StorageSyncManager implements IStorageAdapter {
         let finalCloudProduct: Product | null = null;
 
         if (cloudMatch) {
-          try {
-            finalCloudProduct = await DirectusAPI.updateProduct(cloudMatch.id, {
-              ...lp,
-              category_id: resolvedCatId,
-              size_guide_template_id: resolvedTplId
-            });
-            syncedCount++;
-          } catch (e) {
+          const localTime = lp.updated_at ? new Date(lp.updated_at).getTime() : 0;
+          const cloudTime = ((cloudMatch as any).date_updated || cloudMatch.updated_at) ? new Date((cloudMatch as any).date_updated || cloudMatch.updated_at!).getTime() : 0;
+
+          if (localTime >= cloudTime) {
+            try {
+              finalCloudProduct = await DirectusAPI.updateProduct(cloudMatch.id, {
+                ...lp,
+                category_id: resolvedCatId,
+                size_guide_template_id: resolvedTplId
+              });
+              syncedCount++;
+            } catch (e) {
+              finalCloudProduct = cloudMatch;
+            }
+          } else {
+            // Cloud version is newer; retain cloud version
             finalCloudProduct = cloudMatch;
           }
         } else {

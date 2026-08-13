@@ -5,9 +5,14 @@ import { storageManager, SyncStats } from '../storage';
 import { useRouter } from './Router';
 import { Product, InventoryItem, Color, Size, SizeGuideTemplate, SizeGuideTemplateItem, ClothingTypeSlug } from '../types';
 import { AppUpdateWidget } from './AppUpdateWidget';
-import { OrdersManager } from './OrdersManager';
 import { BarcodeGenerator } from './BarcodeGenerator';
 import { isDesktopEnv } from '../utils/desktop';
+import { DashboardHeader } from './dashboard/DashboardHeader';
+import { ProductMatrixEditor } from './dashboard/ProductMatrixEditor';
+import { WarehouseTable } from './dashboard/WarehouseTable';
+import { OrdersManager } from './dashboard/OrdersManager';
+import { SettingsModal } from './dashboard/SettingsModal';
+import { useDashboardStore } from '../store/useDashboardStore';
 import {
   ShoppingCart,
   Grid3X3,
@@ -258,11 +263,26 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     }
   };
 
+  // Dashboard Store State Management
+  const {
+    warehouseInventory,
+    setWarehouseInventory,
+    warehouseSearch,
+    setWarehouseSearch,
+    updatingWarehouseId,
+    setUpdatingWarehouseId,
+    localStockEdits,
+    localPriceEdits,
+    localSkuEdits,
+    setWarehouseLocalChange,
+    matrixGridState,
+    setMatrixGridState,
+  } = useDashboardStore();
+
   // Global Lists
   const [products, setProducts] = useState<Product[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
   const [sizes, setSizes] = useState<Size[]>([]);
-  const [warehouseInventory, setWarehouseInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -325,8 +345,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
   const [prodFormTemplateId, setProdFormTemplateId] = useState<number | string | 'custom' | null>(null);
   const [newTemplateName, setNewTemplateName] = useState('');
 
-  // Matrix Editor State within Edit Form
-  const [matrixGridState, setMatrixGridState] = useState<Record<string, { stock: number; price: number; sku?: string; enabled: boolean }>>({});
+  // Matrix Editor Saving State
   const [savingMatrix, setSavingMatrix] = useState(false);
 
   // Size Guides state within Edit Form
@@ -354,13 +373,6 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
     shapes: { slim: boolean; regular?: boolean; athletic: boolean; heavy: boolean }
   }>>({});
   const [savingSizeGuides, setSavingSizeGuides] = useState(false);
-
-  // Warehouse Search and Quick Update State
-  const [warehouseSearch, setWarehouseSearch] = useState('');
-  const [updatingWarehouseId, setUpdatingWarehouseId] = useState<number | null>(null);
-  const [localStockEdits, setLocalStockEdits] = useState<Record<number, number>>({});
-  const [localPriceEdits, setLocalPriceEdits] = useState<Record<number, number>>({});
-  const [localSkuEdits, setLocalSkuEdits] = useState<Record<number, string>>({});
 
   // Settings Form State
   const [settingsShopName, setSettingsShopName] = useState(currentUser?.shop_name || '');
@@ -1260,15 +1272,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
   };
 
   const handleWarehouseLocalChange = (itemId: number, field: 'stock' | 'price' | 'sku', value: string) => {
-    if (field === 'stock') {
-      const valNum = Math.max(0, parseInt(value) || 0);
-      setLocalStockEdits(prev => ({ ...prev, [itemId]: valNum }));
-    } else if (field === 'price') {
-      const valNum = Math.max(0, parseInt(value) || 0);
-      setLocalPriceEdits(prev => ({ ...prev, [itemId]: valNum }));
-    } else if (field === 'sku') {
-      setLocalSkuEdits(prev => ({ ...prev, [itemId]: value }));
-    }
+    setWarehouseLocalChange(itemId, field, value);
   };
 
   // --- WAREHOUSE EXPORT FUNCTIONS ---
@@ -1667,151 +1671,22 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
       <main className="flex-1 flex flex-col min-w-0">
         
         {/* TOP STATUS BAR */}
-        <header className={`px-6 py-4 border-b flex items-center justify-between ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-200'}`}>
-          <div className="flex items-center gap-3">
-            {/* Mobile Sidebar Navigation icons */}
-            <div className="md:hidden flex items-center gap-1 bg-neutral-900/30 p-1 rounded-lg border border-neutral-800">
-              <button
-                onClick={() => { setActiveTab('products'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'products' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={isRtl ? "کالاها" : "Products"}
-              >
-                <Package className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('orders'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'orders' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={isRtl ? "سفارشات" : "Orders"}
-              >
-                <ShoppingCart className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('warehouse'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'warehouse' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={isRtl ? "انبار" : "Warehouse"}
-              >
-                <Warehouse className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('barcodes'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'barcodes' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={isRtl ? "بارکد و لیبل انبار" : "Barcodes"}
-              >
-                <BarcodeIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('templates'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'templates' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={isRtl ? "قالب‌های سایز" : "Size Templates"}
-              >
-                <Ruler className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('sizes'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'sizes' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={isRtl ? "مدیریت سایزها" : "Size Management"}
-              >
-                <Sliders className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('compressor'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'compressor' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={t.image_compressor}
-              >
-                <FileImage className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setActiveTab('settings'); setIsEditingProd(null); }}
-                className={`p-1.5 rounded-md ${activeTab === 'settings' ? 'bg-sky-600 text-white' : 'text-neutral-400'}`}
-                title={t.store_settings}
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            </div>
-
-            <h2 className="text-xs sm:text-sm font-extrabold text-neutral-400 flex items-center gap-1.5">
-              <span className="hidden sm:inline">{t.brand_name}</span>
-              <span className="hidden sm:inline">/</span>
-              <span className="text-sky-500 font-black">
-                {activeTab === 'products' ? (isEditingProd ? (isEditingProd.id === 0 ? t.add_product : t.edit_product) : (isRtl ? "کاتالوگ کالاها" : "Catalog")) : ''}
-                {activeTab === 'orders' ? (isRtl ? "مدیریت سفارشات و صدور فاکتور" : "Orders & Invoice POS") : ''}
-                {activeTab === 'warehouse' ? (isRtl ? "مدیریت انبار" : "Warehouse") : ''}
-                {activeTab === 'barcodes' ? (isRtl ? "تولید و چاپ بارکد و اتیکت انبار" : "Barcode & Label Generator") : ''}
-                {activeTab === 'templates' ? (isRtl ? "قالب‌های سایزبندی" : "Size Templates") : ''}
-                {activeTab === 'sizes' ? (isRtl ? "مدیریت سایزها" : "Size Management") : ''}
-                {activeTab === 'compressor' ? t.image_compressor : ''}
-                {activeTab === 'settings' ? t.store_settings : ''}
-              </span>
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Desktop App Update Widget Badge */}
-            <AppUpdateWidget compact />
-
-            {/* Subscription License Badge */}
-            {(() => {
-              const sub = DirectusAPI.getSubscriptionInfo();
-              return (
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-black ${
-                  sub.isPro 
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
-                    : 'bg-neutral-800 border-neutral-700 text-neutral-400'
-                }`}>
-                  <Crown className="w-3 h-3 text-amber-400" />
-                  <span>{sub.isPro ? 'PRO' : (isRtl ? 'دسکتاپ' : 'Desktop')}</span>
-                </span>
-              );
-            })()}
-
-            {/* Directus Cloud Sync Icon Button */}
-            <button
-              onClick={handleManualSync}
-              disabled={syncingCloud}
-              className={`p-2 rounded-lg border border-neutral-800 transition-all cursor-pointer relative flex items-center justify-center ${syncingCloud ? 'bg-sky-500/20 text-sky-400' : 'bg-neutral-900 text-sky-400 hover:bg-neutral-800'}`}
-              title={isRtl ? "همگام‌سازی با کلود دایرکتوس" : "Sync with Directus Cloud"}
-              aria-label="Cloud Sync"
-            >
-              <Cloud className={`w-4 h-4 ${syncingCloud ? 'animate-bounce' : ''}`} />
-              {syncStats.pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-neutral-900 animate-pulse" />
-              )}
-            </button>
-
-            {(() => {
-              const subInfo = DirectusAPI.getSubscriptionInfo();
-              return (
-                <span className={`hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-extrabold ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-300' : 'bg-neutral-100 border-neutral-200 text-neutral-700'}`}>
-                  <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="whitespace-nowrap">
-                    {subInfo.isPro
-                      ? (isRtl ? `کالاها: ${activeProductsCount} (اشتراک PRO)` : `Products: ${activeProductsCount} (PRO Plan)`)
-                      : (isRtl ? `کالاها: ${activeProductsCount} از ۳۰ (طرح رایگان)` : `Products: ${activeProductsCount} of 30 (Free Tier)`)
-                    }
-                  </span>
-                </span>
-              );
-            })()}
-
-            {/* Language Controls */}
-            <button
-              onClick={() => setLang(lang === 'fa' ? 'en' : 'fa')}
-              className={`p-2 border rounded-lg flex items-center justify-center transition-all cursor-pointer ${darkMode ? 'border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-100'}`}
-              title={lang === 'fa' ? 'English' : 'فارسی'}
-              aria-label="Toggle language"
-            >
-              <Globe className="w-4 h-4 text-sky-400" />
-            </button>
-
-            {/* Dark/Light Switch */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 border rounded-lg transition-all ${darkMode ? 'border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'border-neutral-200 text-neutral-700 hover:bg-neutral-100'}`}
-            >
-              {darkMode ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-neutral-600" />}
-            </button>
-          </div>
-        </header>
+        <DashboardHeader
+          t={t}
+          isRtl={isRtl}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          lang={lang}
+          setLang={setLang}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isEditingProd={isEditingProd}
+          setIsEditingProd={setIsEditingProd}
+          activeProductsCount={activeProductsCount}
+          syncStats={syncStats}
+          syncingCloud={syncingCloud}
+          handleManualSync={handleManualSync}
+        />
 
         {/* CONTAINER CONTENT VIEWPORTS */}
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto max-w-7xl w-full mx-auto space-y-6">
@@ -2922,125 +2797,19 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
 
                       {/* SUBTAB 3: 2D STOCK MATRIX GRID */}
                       {editTab === 'matrix' && isEditingProd.id > 0 && (
-                        <div className="space-y-6">
-                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs flex items-center gap-2.5">
-                            <ArrowRightLeft className="w-4 h-4 text-emerald-400" />
-                            <span>
-                              {isRtl
-                                ? "راهنما: جدول متقاطع زیر شامل متغیرهای فعال کالا است. موجودی و قیمت اختصاصی هر رنگ-سایز را در زیر ویرایش کرده و ذخیره کنید."
-                                : "Adjust individual stock levels and price overrides for each active color-size intersection below."}
-                            </span>
-                          </div>
-
-                          {/* 2D Grid Representation for Chosen Items */}
-                          <div className={`overflow-x-auto rounded-xl border ${darkMode ? 'border-neutral-800' : 'border-neutral-200 bg-white'}`}>
-                            <table className="w-full text-xs text-center border-collapse">
-                              <thead>
-                                <tr className={`border-b ${darkMode ? 'bg-neutral-950/40 border-neutral-800' : 'bg-neutral-100 border-neutral-200'}`}>
-                                  <th className={`p-4 border-r font-black ${darkMode ? 'border-neutral-800 text-neutral-400' : 'border-neutral-200 text-neutral-600'}`}>{t.colors} / {t.sizes}</th>
-                                  {sizes
-                                    .filter(sz => selectedSizeIds.includes(sz.id))
-                                    .map(sz => (
-                                      <th key={sz.id} className={`p-4 font-black border-r text-sky-400 ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                                        <span className="text-sm font-bold block">{sz.name}</span>
-                                      </th>
-                                    ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {colors
-                                  .filter(col => selectedColorIds.includes(col.id))
-                                  .map(col => (
-                                    <tr key={col.id} className={`border-b transition-colors ${darkMode ? 'border-neutral-800/80 hover:bg-neutral-900/10' : 'border-neutral-200 hover:bg-neutral-50'}`}>
-                                      <td className={`p-4 border-r text-right font-extrabold flex items-center gap-3 min-w-[150px] ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
-                                        <span className="w-4 h-4 rounded-full border border-neutral-400 shrink-0" style={{ backgroundColor: col.hex_code }} />
-                                        <div>
-                                          <p className={`font-bold ${darkMode ? 'text-white' : 'text-neutral-900'}`}>{isRtl ? col.name_fa : col.name_en}</p>
-                                          <code className="text-[9px] text-neutral-400 font-mono tracking-wider uppercase">{col.hex_code}</code>
-                                        </div>
-                                      </td>
-
-                                      {sizes
-                                        .filter(sz => selectedSizeIds.includes(sz.id))
-                                        .map(sz => {
-                                          const key = `${col.id}-${sz.id}`;
-                                          const cell = matrixGridState[key] || { stock: 0, price: isEditingProd.base_price, sku: '', enabled: false };
-
-                                          return (
-                                            <td key={sz.id} className={`p-3 border-r min-w-[140px] transition-all ${darkMode ? 'border-neutral-800' : 'border-neutral-200'} ${cell.enabled ? 'bg-sky-500/5' : (darkMode ? 'bg-neutral-950/10 opacity-60' : 'bg-neutral-50 opacity-60')}`}>
-                                              <div className="space-y-2 text-center">
-                                                <label className="inline-flex items-center gap-1.5 cursor-pointer">
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={cell.enabled}
-                                                    onChange={(e) => handleCellChange(col.id, sz.id, 'enabled', e.target.checked)}
-                                                    className={`rounded text-sky-600 focus:ring-sky-500 w-3.5 h-3.5 ${darkMode ? 'border-neutral-700 bg-neutral-900' : 'border-neutral-300 bg-white'}`}
-                                                  />
-                                                  <span className={`text-[10px] font-extrabold ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>{cell.enabled ? t.in_stock : t.out_of_stock}</span>
-                                                </label>
-
-                                                {cell.enabled && (
-                                                  <div className="space-y-1">
-                                                    <div className={`flex items-center gap-1 border rounded-md px-1.5 py-1 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'}`}>
-                                                      <span className="text-[9px] text-neutral-500 shrink-0">{t.stock}:</span>
-                                                      <input
-                                                        type="number"
-                                                        value={cell.stock}
-                                                        onChange={(e) => handleCellChange(col.id, sz.id, 'stock', e.target.value)}
-                                                        className="w-full bg-transparent text-center focus:outline-none text-[11px] font-extrabold text-sky-400"
-                                                      />
-                                                    </div>
-
-                                                    <div className={`flex items-center gap-1 border rounded-md px-1.5 py-1 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'}`}>
-                                                      <span className="text-[9px] text-neutral-500 shrink-0">$</span>
-                                                      <input
-                                                        type="number"
-                                                        value={cell.price}
-                                                        onChange={(e) => handleCellChange(col.id, sz.id, 'price', e.target.value)}
-                                                        className={`w-full bg-transparent text-center focus:outline-none text-[11px] font-bold ${darkMode ? 'text-white' : 'text-neutral-900'}`}
-                                                        placeholder={isEditingProd.base_price.toString()}
-                                                      />
-                                                    </div>
-
-                                                    <div className={`flex items-center gap-1 border rounded-md px-1.5 py-1 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'}`}>
-                                                      <span className="text-[9px] text-neutral-500 shrink-0">SKU:</span>
-                                                      <input
-                                                        type="text"
-                                                        value={cell.sku || ''}
-                                                        onChange={(e) => handleCellChange(col.id, sz.id, 'sku', e.target.value)}
-                                                        className="w-full bg-transparent text-center focus:outline-none text-[10px] font-mono font-bold text-amber-400 uppercase"
-                                                        placeholder="SKU..."
-                                                      />
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </td>
-                                          );
-                                        })}
-                                    </tr>
-                                  ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <div className={`flex justify-end pt-4 border-t ${darkMode ? 'border-neutral-800/40' : 'border-neutral-200'}`}>
-                            <button
-                              onClick={saveProductMatrix}
-                              disabled={savingMatrix}
-                              className="px-8 py-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg flex items-center gap-2 cursor-pointer transition-all"
-                            >
-                              {savingMatrix ? (
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <>
-                                  <Check className="w-4 h-4" />
-                                  <span>{isRtl ? "به‌روزرسانی و همگام‌سازی ماتریس" : "Save Active Matrix"}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
+                        <ProductMatrixEditor
+                          t={t}
+                          isRtl={isRtl}
+                          darkMode={darkMode}
+                          sizes={sizes}
+                          colors={colors}
+                          selectedSizeIds={selectedSizeIds}
+                          selectedColorIds={selectedColorIds}
+                          isEditingProd={isEditingProd}
+                          handleCellChange={handleCellChange}
+                          saveProductMatrix={saveProductMatrix}
+                          savingMatrix={savingMatrix}
+                        />
                       )}
 
                     </div>
@@ -3050,296 +2819,26 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
 
               {/* TAB 2: GENERAL WAREHOUSE MANAGER (انبار) */}
               {activeTab === 'warehouse' && (
-                <div className="space-y-6">
-                  {/* Title & Stats */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-lg font-black">{isRtl ? "مدیریت مرکزی انبار پوشاک" : "Warehouse Stock Manager"}</h3>
-                      <p className="text-xs text-neutral-400">
-                        {isRtl 
-                          ? "لیست جامع تمام تنوع‌های لباس موجود در فروشگاه شما. موجودی و قیمت هر کدام را فوراً تغییر دهید." 
-                          : "A complete directory of all color/size clothing inventory combinations in your database."}
-                      </p>
-                    </div>
-
-                    {/* Actions & Search */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Search Field */}
-                      <div className="relative max-w-xs w-full sm:w-auto">
-                        <span className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-neutral-400">
-                          <Search className="w-4 h-4" />
-                        </span>
-                        <input
-                          type="text"
-                          value={warehouseSearch}
-                          onChange={(e) => setWarehouseSearch(e.target.value)}
-                          placeholder={isRtl ? "جستجوی کالا..." : "Search warehouse..."}
-                          className={`w-full pr-10 pl-4 py-2 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-900 border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`}
-                        />
-                      </div>
-
-                      {/* Barcode Generator Shortcut Button */}
-                      <button
-                        onClick={() => setActiveTab('barcodes')}
-                        className="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-                        title={isRtl ? "تولید و چاپ اتیکت و بارکد حرارتی" : "Thermal Barcode Labels"}
-                      >
-                        <BarcodeIcon className="w-4 h-4" />
-                        <span>{isRtl ? "چاپ بارکد انبار" : "Print Barcodes"}</span>
-                      </button>
-
-                      {/* Export CSV Button */}
-                      <button
-                        onClick={handleExportWarehouseCSV}
-                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-                        title={isRtl ? "خروجی اکسل / CSV" : "Export CSV"}
-                      >
-                        <FileSpreadsheet className="w-4 h-4" />
-                        <span>{isRtl ? "خروجی CSV" : "Export CSV"}</span>
-                      </button>
-
-                      {/* Export JSON Button */}
-                      <button
-                        onClick={handleExportWarehouseJSON}
-                        className={`px-3 py-2 border rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          darkMode 
-                            ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700' 
-                            : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border-neutral-300'
-                        }`}
-                        title={isRtl ? "خروجی JSON" : "Export JSON"}
-                      >
-                        <FileJson className="w-4 h-4 text-sky-400" />
-                        <span>{isRtl ? "خروجی JSON" : "Export JSON"}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Table Inventory Grid */}
-                  {filteredWarehouseItems.length === 0 ? (
-                    <div className={`text-center py-20 border border-dashed rounded-2xl ${darkMode ? 'border-neutral-800 bg-neutral-900/10' : 'border-neutral-200 bg-neutral-50'}`}>
-                      <Warehouse className="w-12 h-12 text-neutral-500 mx-auto mb-4" />
-                      <p className={`text-sm font-bold ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                        {isRtl ? "هیچ متغیر انبار منطبقی یافت نشد." : "No matching inventory records found."}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className={`overflow-x-auto rounded-2xl border ${darkMode ? 'border-neutral-800 bg-neutral-900/10' : 'border-neutral-200 bg-white shadow-sm'}`}>
-                      {/* Desktop Table View */}
-                      <table className="w-full text-xs text-center border-collapse hidden sm:table">
-                        <thead>
-                          <tr className={`border-b ${darkMode ? 'bg-neutral-950/40 border-neutral-800 text-neutral-400' : 'bg-neutral-100 border-neutral-200 text-neutral-700'}`}>
-                            <th className="p-4 text-right font-bold">{isRtl ? "کالای پوشاک" : "Garment Profile"}</th>
-                            <th className="p-4 font-bold">{isRtl ? "رنگ" : "Color"}</th>
-                            <th className="p-4 font-bold">{isRtl ? "سایز" : "Size"}</th>
-                            <th className="p-4 font-bold">{isRtl ? "شناسه SKU" : "SKU"}</th>
-                            <th className="p-4 font-bold">{isRtl ? "موجودی انبار" : "Stock level"}</th>
-                            <th className="p-4 font-bold">{isRtl ? "قیمت تنوع (تومان)" : "Override Price"}</th>
-                            <th className="p-4 font-bold">{isRtl ? "عملیات سریع" : "Action"}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredWarehouseItems.map(item => {
-                            const matchedProd = products.find(p => p.id === item.product_id);
-                            const matchedCol = colors.find(c => c.id === item.color_id);
-                            const matchedSize = sizes.find(s => s.id === item.size_id);
-
-                            if (!matchedProd) return null;
-
-                            // Local edits override
-                            const currentLocalStock = localStockEdits[item.id] !== undefined ? localStockEdits[item.id] : item.stock;
-                            const currentLocalPrice = localPriceEdits[item.id] !== undefined ? localPriceEdits[item.id] : item.price;
-                            const currentLocalSku = localSkuEdits[item.id] !== undefined ? localSkuEdits[item.id] : (item.sku || '');
-
-                            const isModified = currentLocalStock !== item.stock || currentLocalPrice !== item.price || currentLocalSku !== (item.sku || '');
-
-                            return (
-                              <tr key={item.id} className={`border-b transition-colors ${darkMode ? 'border-neutral-800/60 hover:bg-neutral-900/10' : 'border-neutral-200 hover:bg-neutral-50'}`}>
-                                {/* Product name & photo */}
-                                <td className="p-3 text-right">
-                                  <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg overflow-hidden shrink-0 border ${darkMode ? 'bg-neutral-950/20 border-neutral-800' : 'bg-neutral-100 border-neutral-200'}`}>
-                                      {matchedProd.image ? (
-                                        <img src={matchedProd.image} alt="Thumbnail" className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-neutral-400">
-                                          <Package className="w-4 h-4" />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <p className={`font-extrabold ${darkMode ? 'text-neutral-200' : 'text-neutral-900'}`}>{isRtl ? matchedProd.name_fa : matchedProd.name_en}</p>
-                                      <span className={`text-[9px] px-1 py-0.2 rounded inline-block mt-0.5 font-bold ${darkMode ? 'bg-neutral-950/30 text-neutral-400' : 'bg-neutral-100 text-neutral-600'}`}>{matchedProd.category}</span>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Color column */}
-                                <td className="p-3">
-                                  <div className={`inline-flex items-center gap-2 px-2 py-1 rounded border text-[10px] font-bold ${darkMode ? 'bg-neutral-900/30 border-neutral-800 text-neutral-300' : 'bg-neutral-50 border-neutral-200 text-neutral-800'}`}>
-                                    <span className="w-3 h-3 rounded-full border border-neutral-400 shadow-sm" style={{ backgroundColor: matchedCol?.hex_code }} />
-                                    <span>{isRtl ? matchedCol?.name_fa : matchedCol?.name_en}</span>
-                                  </div>
-                                </td>
-
-                                {/* Size column */}
-                                <td className="p-3">
-                                  <span className="px-3 py-1 bg-sky-600/10 text-sky-400 font-extrabold border border-sky-500/20 rounded-lg text-xs">
-                                    {matchedSize?.name}
-                                  </span>
-                                </td>
-
-                                {/* SKU edit inline */}
-                                <td className="p-3">
-                                  <div className="flex items-center justify-center gap-1.5 max-w-[140px] mx-auto">
-                                    <input
-                                      type="text"
-                                      value={currentLocalSku}
-                                      onChange={(e) => handleWarehouseLocalChange(item.id, 'sku', e.target.value)}
-                                      className={`w-28 px-2 py-1 text-center font-mono font-bold text-xs rounded border focus:outline-none focus:ring-1 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} ${isModified ? 'text-amber-400' : (darkMode ? 'text-neutral-300' : 'text-neutral-800')}`}
-                                      placeholder="SKU..."
-                                    />
-                                  </div>
-                                </td>
-
-                                {/* Stock edit inline */}
-                                <td className="p-3">
-                                  <div className="flex items-center justify-center gap-1.5 max-w-[120px] mx-auto">
-                                    <input
-                                      type="number"
-                                      value={currentLocalStock}
-                                      onChange={(e) => handleWarehouseLocalChange(item.id, 'stock', e.target.value)}
-                                      className={`w-16 px-2 py-1 text-center font-extrabold text-xs rounded border focus:outline-none focus:ring-1 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} ${isModified ? 'text-sky-400' : (darkMode ? 'text-neutral-300' : 'text-neutral-800')}`}
-                                    />
-                                    <span className={`text-[9px] font-semibold ${darkMode ? 'text-neutral-500' : 'text-neutral-600'}`}>{isRtl ? "عدد" : "pcs"}</span>
-                                  </div>
-                                </td>
-
-                                {/* Price edit inline */}
-                                <td className="p-3">
-                                  <div className="flex items-center justify-center gap-1.5 max-w-[160px] mx-auto">
-                                    <input
-                                      type="number"
-                                      value={currentLocalPrice}
-                                      onChange={(e) => handleWarehouseLocalChange(item.id, 'price', e.target.value)}
-                                      className={`w-28 px-2 py-1 text-center font-bold text-xs rounded border focus:outline-none focus:ring-1 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} ${isModified ? 'text-indigo-400' : (darkMode ? 'text-neutral-300' : 'text-neutral-800')}`}
-                                    />
-                                  </div>
-                                </td>
-
-                                {/* Save action */}
-                                <td className="p-3">
-                                  <button
-                                    onClick={() => handleWarehouseQuickSave(item)}
-                                    disabled={updatingWarehouseId === item.id}
-                                    className={`py-1.5 px-3.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 mx-auto ${
-                                      isModified 
-                                        ? 'bg-sky-600 hover:bg-sky-500 text-white shadow shadow-sky-600/10 cursor-pointer' 
-                                        : (darkMode ? 'bg-neutral-800 text-neutral-500 border border-neutral-700/40 cursor-not-allowed' : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed')
-                                    }`}
-                                  >
-                                    {updatingWarehouseId === item.id ? (
-                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    ) : (
-                                      <>
-                                        <Check className="w-3.5 h-3.5" />
-                                        <span>{isRtl ? "ذخیره" : "Save"}</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-
-                      {/* Responsive Mobile Card View */}
-                      <div className="sm:hidden divide-y divide-neutral-800 p-2 space-y-4">
-                        {filteredWarehouseItems.map(item => {
-                          const matchedProd = products.find(p => p.id === item.product_id);
-                          const matchedCol = colors.find(c => c.id === item.color_id);
-                          const matchedSize = sizes.find(s => s.id === item.size_id);
-
-                          if (!matchedProd) return null;
-
-                          const currentLocalStock = localStockEdits[item.id] !== undefined ? localStockEdits[item.id] : item.stock;
-                          const currentLocalPrice = localPriceEdits[item.id] !== undefined ? localPriceEdits[item.id] : item.price;
-                          const currentLocalSku = localSkuEdits[item.id] !== undefined ? localSkuEdits[item.id] : (item.sku || '');
-                          const isModified = currentLocalStock !== item.stock || currentLocalPrice !== item.price || currentLocalSku !== (item.sku || '');
-
-                          return (
-                            <div key={item.id} className="pt-4 first:pt-0 space-y-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-neutral-950/20 rounded-lg overflow-hidden shrink-0">
-                                  {matchedProd.image && <img src={matchedProd.image} alt="Garment" className="w-full h-full object-cover" />}
-                                </div>
-                                <div className="min-w-0">
-                                  <h4 className="font-extrabold text-xs text-neutral-200 truncate">{isRtl ? matchedProd.name_fa : matchedProd.name_en}</h4>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="w-2.5 h-2.5 rounded-full border border-neutral-700 shrink-0" style={{ backgroundColor: matchedCol?.hex_code }} />
-                                    <span className="text-[10px] text-neutral-400">{isRtl ? matchedCol?.name_fa : matchedCol?.name_en} • سایز {matchedSize?.name}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-neutral-950/20 p-2.5 rounded-xl border border-neutral-800">
-                                <div className="space-y-1">
-                                  <span className="text-[9px] text-neutral-500 font-bold block">{isRtl ? "موجودی انبار" : "Stock"}</span>
-                                  <input
-                                    type="number"
-                                    value={currentLocalStock}
-                                    onChange={(e) => handleWarehouseLocalChange(item.id, 'stock', e.target.value)}
-                                    className="w-full px-2 py-1 text-center font-extrabold text-xs rounded border bg-neutral-950 border-neutral-800 text-sky-400 focus:outline-none"
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <span className="text-[9px] text-neutral-500 font-bold block">{isRtl ? "قیمت (تومان)" : "Price"}</span>
-                                  <input
-                                    type="number"
-                                    value={currentLocalPrice}
-                                    onChange={(e) => handleWarehouseLocalChange(item.id, 'price', e.target.value)}
-                                    className="w-full px-2 py-1 text-center font-bold text-xs rounded border bg-neutral-950 border-neutral-800 text-indigo-400 focus:outline-none"
-                                  />
-                                </div>
-
-                                <div className="space-y-1 col-span-2 sm:col-span-1">
-                                  <span className="text-[9px] text-neutral-500 font-bold block">{isRtl ? "کد شناسه کالا (SKU)" : "SKU"}</span>
-                                  <input
-                                    type="text"
-                                    value={currentLocalSku}
-                                    onChange={(e) => handleWarehouseLocalChange(item.id, 'sku', e.target.value)}
-                                    className="w-full px-2 py-1 text-center font-mono font-bold text-xs rounded border bg-neutral-950 border-neutral-800 text-amber-400 focus:outline-none"
-                                    placeholder="SKU..."
-                                  />
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => handleWarehouseQuickSave(item)}
-                                disabled={!isModified || updatingWarehouseId === item.id}
-                                className={`w-full py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-                                  isModified 
-                                    ? 'bg-sky-600 hover:bg-sky-500 text-white' 
-                                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700/30'
-                                }`}
-                              >
-                                {updatingWarehouseId === item.id ? (
-                                  <RefreshCw className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Check className="w-4 h-4" />
-                                    <span>{isRtl ? "ذخیره تغییرات متغیر" : "Save Stock changes"}</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <WarehouseTable
+                  t={t}
+                  isRtl={isRtl}
+                  darkMode={darkMode}
+                  warehouseSearch={warehouseSearch}
+                  setWarehouseSearch={setWarehouseSearch}
+                  setActiveTab={setActiveTab}
+                  handleExportWarehouseCSV={handleExportWarehouseCSV}
+                  handleExportWarehouseJSON={handleExportWarehouseJSON}
+                  filteredWarehouseItems={filteredWarehouseItems}
+                  products={products}
+                  colors={colors}
+                  sizes={sizes}
+                  localStockEdits={localStockEdits}
+                  localPriceEdits={localPriceEdits}
+                  localSkuEdits={localSkuEdits}
+                  handleWarehouseLocalChange={handleWarehouseLocalChange}
+                  handleWarehouseQuickSave={handleWarehouseQuickSave}
+                  updatingWarehouseId={updatingWarehouseId}
+                />
               )}
 
               {/* TAB 2.2: BARCODE & LABEL GENERATOR */}
@@ -4360,208 +3859,23 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                 </div>
               )}
               {activeTab === 'settings' && (
-                <div className={`p-6 rounded-2xl border max-w-2xl mx-auto space-y-6 ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-200'}`}>
-                  <div>
-                    <h3 className="text-lg font-black">{t.store_settings}</h3>
-                    <p className="text-xs text-neutral-400">{isRtl ? "تنظیمات آدرس‌دهی و هویت تجاری فروشگاه پوشاک شما." : "Change slug routing URLs and branding details."}</p>
-                  </div>
-
-                  <form onSubmit={handleSettingsSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5 text-neutral-400">{t.shop_name}</label>
-                      <input
-                        type="text"
-                        required
-                        value={settingsShopName}
-                        onChange={(e) => setSettingsShopName(e.target.value)}
-                        className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold mb-1.5 text-neutral-400">{t.shop_slug}</label>
-                      <input
-                        type="text"
-                        required
-                        value={settingsShopSlug}
-                        onChange={(e) => setSettingsShopSlug(e.target.value)}
-                        className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 text-left dir-ltr ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={savingSettings}
-                      className="w-full py-2.5 mt-2 bg-gradient-to-r from-sky-600 to-indigo-600 text-white text-xs font-extrabold rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      {savingSettings ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <span>{t.save}</span>
-                      )}
-                    </button>
-                  </form>
-
-                  {/* Subscription Management & Plan Status Card */}
-                  <div className={`pt-6 border-t space-y-4 ${darkMode ? 'border-white/10' : 'border-neutral-200'}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Crown className="w-5 h-5 text-amber-400" />
-                        <div>
-                          <h4 className={`text-sm font-extrabold ${darkMode ? 'text-neutral-200' : 'text-neutral-900'}`}>
-                            {isRtl ? "مدیریت اشتراک و لایسنس تن‌خور" : "Subscription & Licensing"}
-                          </h4>
-                          <p className={`text-[11px] ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                            {isRtl ? "نسخه دسکتاپ به صورت ۱۰۰٪ رایگان کار می‌کند • همگام‌سازی ابری و نسخه وب نیازمند اشتراک ویژه است" : "Desktop is 100% free offline • Cloud sync and Web App require PRO subscription"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {(() => {
-                        const sub = DirectusAPI.getSubscriptionInfo();
-                        return (
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-black border flex items-center gap-1 ${
-                              sub.isPro 
-                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
-                                : 'bg-neutral-800 border-neutral-700 text-neutral-400'
-                            }`}>
-                              <Crown className="w-3.5 h-3.5" />
-                              <span>{sub.isPro ? (isRtl ? "اشتراک ویژه PRO" : "PRO Plan") : (isRtl ? "طرح دسکتاپ رایگان" : "Free Desktop Tier")}</span>
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (sub.isPro) {
-                                  DirectusAPI.cancelProSubscription();
-                                  setSuccess(isRtl ? "اشتراک به طرح رایگان تغییر یافت." : "Switched to free plan.");
-                                } else {
-                                  DirectusAPI.activateProSubscription(365);
-                                  setSuccess(isRtl ? "اشتراک ویژه ۱ ساله PRO با موفقیت فعال شد!" : "PRO subscription activated successfully!");
-                                }
-                                setSyncStats(storageManager.getSyncStats());
-                                setTimeout(() => setSuccess(''), 3000);
-                              }}
-                              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                                sub.isPro 
-                                  ? 'border-neutral-700 text-neutral-400 hover:bg-neutral-800' 
-                                  : 'bg-gradient-to-r from-amber-500 to-amber-600 text-neutral-950 border-amber-400 font-black shadow-md hover:opacity-90'
-                              }`}
-                            >
-                              {sub.isPro ? (isRtl ? "غیرفعال‌سازی PRO" : "Cancel PRO") : (isRtl ? "فعال‌سازی تست PRO" : "Activate PRO Trial")}
-                            </button>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Storage Adapter & Offline/Cloud Configuration Card */}
-                  <div className={`pt-6 border-t space-y-4 ${darkMode ? 'border-white/10' : 'border-neutral-200'}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Database className="w-5 h-5 text-sky-400" />
-                        <div>
-                          <h4 className={`text-sm font-extrabold ${darkMode ? 'text-neutral-200' : 'text-neutral-900'}`}>
-                            {isRtl ? "تنظیمات لایه ذخیره‌سازی و دیتابیس (Storage Adapter)" : "Local Storage Adapter & Cloud Sync"}
-                          </h4>
-                          <p className={`text-[11px] ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
-                            {isRtl ? "انتخاب بین کارکرد ۱۰۰٪ آفلاین رایگان و همگام‌سازی ابری دوطرفه" : "Choose between 100% free offline mode and safe two-way cloud sync."}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const isDesktop = isDesktopEnv();
-                          if (!isDesktop) {
-                            setError(isRtl ? "در مرورگر وب فقط حالت ابری آنلاین فعال است و امکان سوئیچ به آفلاین وجود ندارد." : "Web browser mode is strictly cloud synced.");
-                            setTimeout(() => setError(''), 4000);
-                            return;
-                          }
-                          try {
-                            storageManager.setMode('local_offline');
-                            setSuccess(isRtl ? "حالت دیتابیس آفلاین محلی فعال شد." : "Offline local database mode activated.");
-                            setTimeout(() => setSuccess(''), 3000);
-                          } catch (err: any) {
-                            setError(err.message);
-                            setTimeout(() => setError(''), 4000);
-                          }
-                        }}
-                        className={`p-4 rounded-xl border text-right transition-all flex flex-col justify-between gap-2 cursor-pointer ${
-                          syncStats.mode === 'local_offline' 
-                            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 shadow-md shadow-emerald-500/10' 
-                            : (darkMode ? 'bg-neutral-950/40 border-white/10 hover:border-white/20 text-neutral-400' : 'bg-neutral-50 border-neutral-200 hover:border-neutral-300 text-neutral-700')
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <Database className="w-4 h-4" />
-                          {syncStats.mode === 'local_offline' && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-                        </div>
-                        <div>
-                          <p className="text-xs font-black">{isRtl ? "حالت آفلاین محلی (رایگان)" : "Local Offline (Free)"}</p>
-                          <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>{isRtl ? "ذخیره‌سازی سریع در حافظه دستگاه بدون نیاز به اینترنت" : "Fast device-local storage without network dependence"}</p>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          try {
-                            storageManager.setMode('cloud_synced');
-                            setSuccess(isRtl ? "حالت همگام‌سازی ابری دوطرفه فعال شد." : "Two-way cloud synced mode activated.");
-                            setTimeout(() => setSuccess(''), 3000);
-                          } catch (err: any) {
-                            setError(err.message || (isRtl ? "روشن کردن همگام‌سازی ابری نیازمند اشتراک ویژه (PRO) است." : "Cloud sync requires an active PRO subscription."));
-                            setTimeout(() => setError(''), 5000);
-                          }
-                        }}
-                        className={`p-4 rounded-xl border text-right transition-all flex flex-col justify-between gap-2 cursor-pointer ${
-                          syncStats.mode === 'cloud_synced' 
-                            ? 'bg-sky-500/10 border-sky-500/40 text-sky-300 shadow-md shadow-sky-500/10' 
-                            : (darkMode ? 'bg-neutral-950/40 border-white/10 hover:border-white/20 text-neutral-400' : 'bg-neutral-50 border-neutral-200 hover:border-neutral-300 text-neutral-700')
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <Cloud className="w-4 h-4" />
-                          {syncStats.mode === 'cloud_synced' && <CheckCircle2 className="w-4 h-4 text-sky-400" />}
-                        </div>
-                        <div>
-                          <p className="text-xs font-black">{isRtl ? "همگام‌سازی ابری (نیازمند PRO)" : "Cloud Synced (PRO)"}</p>
-                          <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>{isRtl ? "پشتیبان‌گیری خودکار و همگام‌سازی دوطرفه بین دسکتاپ و وب" : "Automatic backup & safe two-way desktop-web sync"}</p>
-                        </div>
-                      </button>
-                    </div>
-
-                    {syncStats.pendingCount > 0 && (
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between text-xs">
-                        <span className="text-amber-400 font-extrabold flex items-center gap-2">
-                          <RefreshCw className="w-4 h-4" />
-                          <span>{isRtl ? `${syncStats.pendingCount} تغییر محلی آماده ارسال به ابرید` : `${syncStats.pendingCount} pending local changes queued for cloud sync`}</span>
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={handleManualSync}
-                          disabled={syncingCloud}
-                          className="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${syncingCloud ? 'animate-spin' : ''}`} />
-                          <span>{isRtl ? "ارسال تغییرات به کلود" : "Sync Now"}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Software Update Card */}
-                  <div className={`pt-6 border-t ${darkMode ? 'border-white/10' : 'border-neutral-200'}`}>
-                    <AppUpdateWidget />
-                  </div>
-                </div>
+                <SettingsModal
+                  t={t}
+                  isRtl={isRtl}
+                  darkMode={darkMode}
+                  settingsShopName={settingsShopName}
+                  setSettingsShopName={setSettingsShopName}
+                  settingsShopSlug={settingsShopSlug}
+                  setSettingsShopSlug={setSettingsShopSlug}
+                  handleSettingsSubmit={handleSettingsSubmit}
+                  savingSettings={savingSettings}
+                  syncStats={syncStats}
+                  syncingCloud={syncingCloud}
+                  handleManualSync={handleManualSync}
+                  setError={setError}
+                  setSuccess={setSuccess}
+                  setSyncStats={setSyncStats}
+                />
               )}
 
             </>

@@ -1,22 +1,22 @@
 {
-  "version": "1.4.5",
-  "releaseDate": "2026-08-12",
+  "version": "1.4.6",
+  "releaseDate": "2026-08-13",
   "minSupportedVersion": "1.0.0",
   "minimum_version": "1.0.0",
-  "notes": "• مدیریت جامع کدهای شناسه SKU در تمام بخش‌های انبارداری و کارت محصول\n• ویرایش مستقیم SKU از تب ماتریس ۲ بعدی و لیست متغیرهای انبار\n• خواندن خودکار SKU در تولید و چاپ بارکد و لیبل‌های حرارتی",
+  "notes": "• معماری جدید کامپوننت‌های داشبورد و شکستن فایل یکپارچه به زیرکامپوننت‌های ماژولار\n• مدیریت مرکزی حالت‌های داشبورد و ماتریس انبار با Zustand\n• بهبود سرعت رندر، بهینه‌سازی حافظه و کارایی لایه ذخیره‌سازی",
   "changelog": {
     "fa": [
-      "افزودن فیلد SKU قابل ویرایش به متغیرهای انبار و ماتریس ۲ بعدی محصول",
-      "پشتیبانی کامل از ذخیره‌سازی و همگام‌سازی SKU در دیتابیس بومی SQLite و دایرکتوس",
-      "استفاده هوشمند از کد SKU در ساخت بارکد و لیبل‌های حرارتی",
-      "ارتقای نسخه نرم‌افزار به ۱.۴.۵"
+      "شکستن فایل غول‌پیکر Dashboard.tsx به کامپوننت‌های ماژولار (DashboardHeader, ProductMatrixEditor, WarehouseTable, SettingsModal, OrdersManager)",
+      "مدیریت متمرکز و بهینه stateهای انبار و ماتریس ۲ بعدی با Zustand Store",
+      "ارتقای سرعت بارگذاری، کاهش رندرهای اضافی و بهبود trải nghiệm کاربری (UX)",
+      "ارتقای نسخه نرم‌افزار به ۱.۴.۶"
     ],
     "en": [
-      "Added editable SKU field to inventory items and product 2D matrix tab",
-      "Full SKU persistence & synchronization across local SQLite and Directus cloud",
-      "Integrated SKU into barcode generator and thermal labels",
-      "Upgraded application version to 1.4.5"
+      "Modularized monolithic Dashboard component into smaller components (DashboardHeader, ProductMatrixEditor, WarehouseTable, SettingsModal, OrdersManager)",
+      "Centralized state management for warehouse inventory and 2D matrix using Zustand Store",
+      "Optimized rendering performance, memory usage, and user experience",
+      "Upgraded application version to 1.4.6"
     ]
   },
-  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.5"
+  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.6"
 }

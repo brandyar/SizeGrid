@@ -22,95 +22,168 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
   }
 
   /**
-   * Initializes local SQLite tables via Tauri SQL plugin or native IPC bridge
+   * Initializes local SQLite database and runs structured sequential migrations
    */
   private async initSQLiteDatabase(): Promise<void> {
     try {
       const tauri = getTauriGlobal();
       const win = typeof window !== 'undefined' ? (window as any) : {};
-
       const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
 
       if (typeof invoke === 'function') {
-        const createTablesSql = [
-          `CREATE TABLE IF NOT EXISTS products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name_fa TEXT,
-            name_en TEXT,
-            description_fa TEXT,
-            description_en TEXT,
-            category TEXT,
-            category_id INTEGER,
-            base_price REAL,
-            image TEXT,
-            clothing_type_slug TEXT,
-            size_guide_template_id INTEGER,
-            created_by TEXT,
-            is_active INTEGER DEFAULT 1
-          );`,
-          `CREATE TABLE IF NOT EXISTS categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            system_type INTEGER DEFAULT 1,
-            clothing_type_slug TEXT
-          );`,
-          `CREATE TABLE IF NOT EXISTS sizes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            sort_order INTEGER DEFAULT 10
-          );`,
-          `CREATE TABLE IF NOT EXISTS colors (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name_fa TEXT,
-            name_en TEXT,
-            hex_code TEXT
-          );`,
-          `CREATE TABLE IF NOT EXISTS size_templates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            measurements TEXT,
-            clothing_type_slug TEXT
-          );`,
-          `CREATE TABLE IF NOT EXISTS inventory (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER,
-            color_id INTEGER,
-            size_id INTEGER,
-            stock INTEGER,
-            price REAL,
-            sku TEXT
-          );`,
-          `CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            status TEXT,
-            order_total REAL,
-            date_created TEXT,
-            order_items TEXT
-          );`,
-          `CREATE TABLE IF NOT EXISTS sync_queue (
-            id TEXT PRIMARY KEY,
-            entity_type TEXT,
-            entity_id TEXT,
-            operation TEXT,
-            payload TEXT,
-            timestamp INTEGER
-          );`
-        ];
-
-        for (const query of createTablesSql) {
-          await invoke('plugin:sql|execute', {
-            db: this.dbName,
-            query,
-            bindValues: []
-          }).catch(() => {});
-        }
-
-        // Migrate existing DB schema if sku column missing
+        // 1. Ensure migrations table exists
         await invoke('plugin:sql|execute', {
           db: this.dbName,
-          query: `ALTER TABLE inventory ADD COLUMN sku TEXT;`,
+          query: `CREATE TABLE IF NOT EXISTS _migrations (
+            version INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            applied_at TEXT NOT NULL
+          );`,
           bindValues: []
         }).catch(() => {});
+
+        // 2. Fetch applied migration versions
+        const appliedRows = await invoke('plugin:sql|select', {
+          db: this.dbName,
+          query: `SELECT version FROM _migrations;`,
+          bindValues: []
+        }).catch(() => []) as Array<{ version: number }>;
+
+        const appliedVersions = new Set((appliedRows || []).map(r => Number(r.version)));
+
+        // 3. Define migrations
+        const migrations = [
+          {
+            version: 1,
+            name: 'initial_core_schema',
+            queries: [
+              `CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_uuid TEXT,
+                updated_at TEXT,
+                name_fa TEXT,
+                name_en TEXT,
+                description_fa TEXT,
+                description_en TEXT,
+                category TEXT,
+                category_id INTEGER,
+                base_price REAL,
+                image TEXT,
+                clothing_type_slug TEXT,
+                size_guide_template_id INTEGER,
+                created_by TEXT,
+                is_active INTEGER DEFAULT 1
+              );`,
+              `CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_uuid TEXT,
+                updated_at TEXT,
+                name TEXT,
+                system_type INTEGER DEFAULT 1,
+                clothing_type_slug TEXT
+              );`,
+              `CREATE TABLE IF NOT EXISTS sizes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_uuid TEXT,
+                updated_at TEXT,
+                name TEXT,
+                sort_order INTEGER DEFAULT 10
+              );`,
+              `CREATE TABLE IF NOT EXISTS colors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_uuid TEXT,
+                updated_at TEXT,
+                name_fa TEXT,
+                name_en TEXT,
+                hex_code TEXT
+              );`,
+              `CREATE TABLE IF NOT EXISTS size_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_uuid TEXT,
+                updated_at TEXT,
+                name TEXT,
+                measurements TEXT,
+                clothing_type_slug TEXT
+              );`,
+              `CREATE TABLE IF NOT EXISTS inventory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_uuid TEXT,
+                updated_at TEXT,
+                product_id INTEGER,
+                color_id INTEGER,
+                size_id INTEGER,
+                stock INTEGER,
+                price REAL,
+                sku TEXT
+              );`,
+              `CREATE TABLE IF NOT EXISTS orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                local_uuid TEXT,
+                updated_at TEXT,
+                status TEXT,
+                order_total REAL,
+                date_created TEXT,
+                order_items TEXT
+              );`,
+              `CREATE TABLE IF NOT EXISTS sync_queue (
+                id TEXT PRIMARY KEY,
+                entity_type TEXT,
+                entity_id TEXT,
+                operation TEXT,
+                payload TEXT,
+                timestamp INTEGER
+              );`
+            ]
+          },
+          {
+            version: 2,
+            name: 'add_sku_to_inventory',
+            queries: [
+              `ALTER TABLE inventory ADD COLUMN sku TEXT;`
+            ]
+          },
+          {
+            version: 3,
+            name: 'add_uuid_and_timestamps',
+            queries: [
+              `ALTER TABLE products ADD COLUMN local_uuid TEXT;`,
+              `ALTER TABLE products ADD COLUMN updated_at TEXT;`,
+              `ALTER TABLE categories ADD COLUMN local_uuid TEXT;`,
+              `ALTER TABLE categories ADD COLUMN updated_at TEXT;`,
+              `ALTER TABLE sizes ADD COLUMN local_uuid TEXT;`,
+              `ALTER TABLE sizes ADD COLUMN updated_at TEXT;`,
+              `ALTER TABLE colors ADD COLUMN local_uuid TEXT;`,
+              `ALTER TABLE colors ADD COLUMN updated_at TEXT;`,
+              `ALTER TABLE size_templates ADD COLUMN local_uuid TEXT;`,
+              `ALTER TABLE size_templates ADD COLUMN updated_at TEXT;`,
+              `ALTER TABLE inventory ADD COLUMN local_uuid TEXT;`,
+              `ALTER TABLE inventory ADD COLUMN updated_at TEXT;`,
+              `ALTER TABLE orders ADD COLUMN local_uuid TEXT;`,
+              `ALTER TABLE orders ADD COLUMN updated_at TEXT;`
+            ]
+          }
+        ];
+
+        // 4. Run pending migrations
+        for (const m of migrations) {
+          if (!appliedVersions.has(m.version)) {
+            for (const q of m.queries) {
+              await invoke('plugin:sql|execute', {
+                db: this.dbName,
+                query: q,
+                bindValues: []
+              }).catch(() => {});
+            }
+
+            await invoke('plugin:sql|execute', {
+              db: this.dbName,
+              query: `INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?);`,
+              bindValues: [m.version, m.name, new Date().toISOString()]
+            }).catch(() => {});
+
+            console.log(`[SQLite Migration] Successfully applied migration v${m.version} (${m.name})`);
+          }
+        }
 
         this.dbInitialized = true;
       }
