@@ -19,7 +19,7 @@ const versionTsContent = `export const APP_VERSION = '${targetVersion}';\n`;
 fs.writeFileSync(versionTsPath, versionTsContent, 'utf8');
 console.log(`  ✓ Updated src/version.ts`);
 
-// 2. Update public/version.json
+// 2. Update public/version.json and public/latest.json
 const publicVersionPath = path.join(rootDir, 'public', 'version.json');
 if (fs.existsSync(publicVersionPath)) {
   try {
@@ -30,6 +30,29 @@ if (fs.existsSync(publicVersionPath)) {
     console.log(`  ✓ Updated public/version.json`);
   } catch (err) {
     console.warn(`  ! Could not update public/version.json:`, err.message);
+  }
+}
+
+const publicLatestPath = path.join(rootDir, 'public', 'latest.json');
+if (fs.existsSync(publicLatestPath)) {
+  try {
+    const latestJson = JSON.parse(fs.readFileSync(publicLatestPath, 'utf8'));
+    latestJson.version = targetVersion;
+    if (latestJson.platforms) {
+      if (latestJson.platforms['windows-x86_64']) {
+        latestJson.platforms['windows-x86_64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_x64-setup.exe`;
+      }
+      if (latestJson.platforms['darwin-x86_64']) {
+        latestJson.platforms['darwin-x86_64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_x64.dmg`;
+      }
+      if (latestJson.platforms['darwin-aarch64']) {
+        latestJson.platforms['darwin-aarch64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_aarch64.dmg`;
+      }
+    }
+    fs.writeFileSync(publicLatestPath, JSON.stringify(latestJson, null, 2) + '\n', 'utf8');
+    console.log(`  ✓ Updated public/latest.json`);
+  } catch (err) {
+    console.warn(`  ! Could not update public/latest.json:`, err.message);
   }
 }
 

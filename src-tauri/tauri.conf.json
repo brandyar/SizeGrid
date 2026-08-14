@@ -4,7 +4,8 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
     "devPath": "http://localhost:3000",
-    "distDir": "../dist"
+    "distDir": "../dist",
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "Tankhor",
@@ -13,17 +14,29 @@
   "tauri": {
     "allowlist": {
       "all": false,
+      "app": {
+        "all": true
+      },
       "process": {
         "relaunch": true,
         "exit": true
+      },
+      "updater": {
+        "all": true,
+        "dialog": false
+      },
+      "shell": {
+        "all": false,
+        "open": true
       }
     },
     "updater": {
       "active": true,
       "endpoints": [
-        "https://tankhor.com/latest.json",
+        "https://raw.githubusercontent.com/brandyar/SizeGrid/main/public/latest.json",
+        "https://raw.githubusercontent.com/brandyar/SizeGrid/master/public/latest.json",
         "https://raw.githubusercontent.com/tankhor/tankhor-app/main/public/latest.json",
-        "https://update.tankhor.com/latest.json"
+        "https://tankhor.com/latest.json"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5MEI5RUQ2MUU5MkMzMTMKUldRVHc1SWUxcDRMYWNZSktTai9LWWZsWEpmVHJVbUt6SktGaUdwMmFseWdldTNZekhsaHNhNlYK"

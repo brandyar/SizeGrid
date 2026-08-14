@@ -1,4 +1,4 @@
-import { AppVersionInfo, UpdateState, UpdateCheckStatus } from './types';
+import { AppVersionInfo, UpdateState } from './types';
 import { isDesktopEnv } from './utils/desktop';
 import { APP_VERSION } from './version';
 
@@ -6,6 +6,33 @@ import { APP_VERSION } from './version';
 export const CURRENT_APP_VERSION = APP_VERSION;
 
 const UPDATE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache TTL to avoid GitHub API rate limits
+
+// Lazy-loaded Tauri native modules
+let tauriUpdaterModule: typeof import('@tauri-apps/api/updater') | null = null;
+let tauriProcessModule: typeof import('@tauri-apps/api/process') | null = null;
+let tauriAppModule: typeof import('@tauri-apps/api/app') | null = null;
+
+async function getTauriModules() {
+  if (typeof window === 'undefined') return null;
+  try {
+    if (!tauriUpdaterModule) {
+      tauriUpdaterModule = await import('@tauri-apps/api/updater').catch(() => null);
+    }
+    if (!tauriProcessModule) {
+      tauriProcessModule = await import('@tauri-apps/api/process').catch(() => null);
+    }
+    if (!tauriAppModule) {
+      tauriAppModule = await import('@tauri-apps/api/app').catch(() => null);
+    }
+    return {
+      updater: tauriUpdaterModule,
+      process: tauriProcessModule,
+      app: tauriAppModule,
+    };
+  } catch (e) {
+    return null;
+  }
+}
 
 class AppUpdateService {
   private state: UpdateState = {
@@ -21,6 +48,7 @@ class AppUpdateService {
   private listeners: Array<(state: UpdateState) => void> = [];
   private activeTauriUpdateHandle: any = null;
   private autoCheckTimer: any = null;
+  private unlistenUpdaterEvents: (() => void) | null = null;
 
   constructor() {
     // Load last checked time on initialization & clean legacy fake version overrides
@@ -136,16 +164,14 @@ class AppUpdateService {
     this.notifyListeners();
 
     try {
+      const tauriModules = await getTauriModules();
+
       // 1. Query native app version from Tauri IPC bridge if available
-      if (this.isTauriDesktop()) {
+      if (this.isTauriDesktop() && tauriModules?.app) {
         try {
-          const tauriWindow = window as any;
-          const appObj = tauriWindow.__TAURI__?.app || tauriWindow.__TAURI_PLUGIN_APP__;
-          if (appObj && typeof appObj.getVersion === 'function') {
-            const nativeVersion = await appObj.getVersion();
-            if (nativeVersion && typeof nativeVersion === 'string') {
-              this.state.currentVersion = nativeVersion.trim();
-            }
+          const nativeVersion = await tauriModules.app.getVersion();
+          if (nativeVersion && typeof nativeVersion === 'string') {
+            this.state.currentVersion = nativeVersion.trim();
           }
         } catch (verErr) {
           console.warn('Native Tauri getVersion query warning:', verErr);
@@ -153,43 +179,38 @@ class AppUpdateService {
       }
 
       // 2. Query official Tauri Updater native bridge first
-      if (this.isTauriDesktop()) {
+      if (this.isTauriDesktop() && tauriModules?.updater) {
         try {
-          const tauriWindow = window as any;
-          const updaterModule = tauriWindow.__TAURI__?.updater || tauriWindow.__TAURI_PLUGIN_UPDATER__;
-          if (updaterModule) {
-            const checkFn = updaterModule.check || updaterModule.checkUpdate;
-            if (typeof checkFn === 'function') {
-              const update = await checkFn();
-              if (update?.shouldUpdate || update?.available) {
-                this.activeTauriUpdateHandle = update;
-                const releaseVersion = update.manifest?.version || update.version || '1.4.1';
-                const minVer = update.manifest?.minimum_version || update.manifest?.minSupportedVersion || '1.0.0';
-                const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
+          const update = await tauriModules.updater.checkUpdate();
+          if (update?.shouldUpdate) {
+            this.activeTauriUpdateHandle = update;
+            const releaseVersion = update.manifest?.version || '1.4.6';
+            const minVer = (update.manifest as any)?.minimum_version || (update.manifest as any)?.minSupportedVersion || '1.0.0';
+            const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
 
-                this.state.status = 'update_available';
-                this.state.latestRelease = {
-                  version: releaseVersion,
-                  releaseDate: update.manifest?.pub_date || update.manifest?.date || new Date().toISOString().split('T')[0],
-                  notes: update.manifest?.notes || update.body || 'به‌روزرسانی جدید تن‌خور دسکتاپ',
-                  changelog: {
-                    fa: [update.manifest?.notes || update.body || 'افزوده شدن قابلیت‌های جدید و ارتقای کارایی'],
-                    en: [update.manifest?.notes || update.body || 'New features and bug fixes added.']
-                  },
-                  downloadUrl: update.manifest?.url || update.url,
-                  minimum_version: minVer,
-                  isMandatory,
-                };
+            this.state.status = 'update_available';
+            this.state.latestRelease = {
+              version: releaseVersion,
+              releaseDate: (update.manifest as any)?.pub_date || (update.manifest as any)?.date || new Date().toISOString().split('T')[0],
+              notes: (update.manifest as any)?.notes || (update as any).body || 'به‌روزرسانی جدید تن‌خور دسکتاپ',
+              changelog: {
+                fa: [(update.manifest as any)?.notes || (update as any).body || 'افزوده شدن قابلیت‌های جدید و ارتقای کارایی'],
+                en: [(update.manifest as any)?.notes || (update as any).body || 'New features and bug fixes added.']
+              },
+              downloadUrl: (update.manifest as any)?.url || 'https://github.com/brandyar/SizeGrid/releases/latest',
+              minimum_version: minVer,
+              isMandatory,
+            };
 
-                this.state.lastCheckedTime = Date.now();
-                if (isStartupCheck || isMandatory) {
-                  this.state.showStartupModal = true;
-                }
-                localStorage.setItem('tankhor_last_update_check', this.state.lastCheckedTime.toString());
-                this.notifyListeners();
-                return this.getState();
-              }
+            this.state.lastCheckedTime = Date.now();
+            if (isStartupCheck || isMandatory) {
+              this.state.showStartupModal = true;
             }
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('tankhor_last_update_check', this.state.lastCheckedTime.toString());
+            }
+            this.notifyListeners();
+            return this.getState();
           }
         } catch (tauriErr) {
           console.warn('Tauri native updater check failed, falling back to HTTP endpoints:', tauriErr);
@@ -383,24 +404,21 @@ class AppUpdateService {
    */
   public async relaunchApp(): Promise<void> {
     if (typeof window === 'undefined') return;
-    const tauriWindow = window as any;
 
-    if (this.isTauriDesktop() && tauriWindow.__TAURI__) {
+    if (this.isTauriDesktop()) {
       try {
+        const tauriModules = await getTauriModules();
+        if (tauriModules?.process?.relaunch) {
+          await tauriModules.process.relaunch();
+          return;
+        }
+        const tauriWindow = window as any;
         if (tauriWindow.__TAURI__?.process?.relaunch) {
           await tauriWindow.__TAURI__.process.relaunch();
           return;
         }
-        if (tauriWindow.__TAURI__?.updater?.relaunch) {
-          await tauriWindow.__TAURI__.updater.relaunch();
-          return;
-        }
         if (tauriWindow.__TAURI__?.relaunch) {
           await tauriWindow.__TAURI__.relaunch();
-          return;
-        }
-        if (tauriWindow.__TAURI__?.core?.invoke) {
-          await tauriWindow.__TAURI__.core.invoke('plugin:process|relaunch');
           return;
         }
       } catch (rErr) {
@@ -413,7 +431,7 @@ class AppUpdateService {
   }
 
   /**
-   * Download and install the available update
+   * Download and install the available update in the background
    */
   public async downloadAndInstallUpdate(): Promise<void> {
     if (!this.state.latestRelease) return;
@@ -424,17 +442,53 @@ class AppUpdateService {
     this.notifyListeners();
 
     try {
-      const tauriWindow = typeof window !== 'undefined' ? (window as any) : null;
+      const tauriModules = await getTauriModules();
       let installedViaNativeUpdater = false;
 
-      if (this.isTauriDesktop() && tauriWindow) {
-        // A. If active Tauri update handle exists from native check()
+      if (this.isTauriDesktop()) {
+        // A. Listen to native updater events for live download progress
+        if (tauriModules?.updater?.onUpdaterEvent) {
+          try {
+            if (this.unlistenUpdaterEvents) {
+              this.unlistenUpdaterEvents();
+              this.unlistenUpdaterEvents = null;
+            }
+            this.unlistenUpdaterEvents = await tauriModules.updater.onUpdaterEvent((statusEvent: any) => {
+              const statusStr = String(statusEvent?.status || '');
+              if (statusStr === 'PENDING') {
+                this.state.status = 'downloading';
+                this.state.downloadProgress = 20;
+                this.notifyListeners();
+              } else if (statusStr === 'DOWNLOADING') {
+                this.state.status = 'downloading';
+                this.state.downloadProgress = Math.min(92, Math.max(30, this.state.downloadProgress + 15));
+                this.notifyListeners();
+              } else if (statusStr === 'DOWNLOADED') {
+                this.state.status = 'ready_to_install';
+                this.state.downloadProgress = 100;
+                this.notifyListeners();
+              } else if (statusStr === 'DONE') {
+                this.state.status = 'ready_to_install';
+                this.state.downloadProgress = 100;
+                this.notifyListeners();
+              } else if (statusStr === 'ERROR') {
+                this.state.status = 'error';
+                this.state.errorMessage = statusEvent?.error || 'خطا در دانلود خودکار فایل';
+                this.notifyListeners();
+              }
+            });
+          } catch (listenerErr) {
+            console.warn('Could not register onUpdaterEvent listener:', listenerErr);
+          }
+        }
+
+        // B. If active Tauri update handle exists from native check()
         if (this.activeTauriUpdateHandle) {
           try {
             if (typeof this.activeTauriUpdateHandle.downloadAndInstall === 'function') {
               await this.activeTauriUpdateHandle.downloadAndInstall((event: any) => {
                 if (event?.event === 'Progress' && event?.data?.chunkLength) {
-                  this.state.downloadProgress = Math.min(95, this.state.downloadProgress + 15);
+                  this.state.downloadProgress = Math.min(95, this.state.downloadProgress + 10);
                   this.notifyListeners();
                 } else if (typeof event === 'number') {
                   this.state.downloadProgress = Math.min(99, event);
@@ -457,21 +511,13 @@ class AppUpdateService {
           }
         }
 
-        // B. Global updater module fallback if not handled
-        if (!installedViaNativeUpdater) {
-          const updaterObj = tauriWindow.__TAURI__?.updater || tauriWindow.__TAURI_PLUGIN_UPDATER__;
-          if (updaterObj) {
-            try {
-              if (typeof updaterObj.downloadAndInstall === 'function') {
-                await updaterObj.downloadAndInstall();
-                installedViaNativeUpdater = true;
-              } else if (typeof updaterObj.install === 'function') {
-                await updaterObj.install();
-                installedViaNativeUpdater = true;
-              }
-            } catch (upErr) {
-              console.warn('Global Tauri updater failed:', upErr);
-            }
+        // C. Global updater installUpdate() fallback
+        if (!installedViaNativeUpdater && tauriModules?.updater?.installUpdate) {
+          try {
+            await tauriModules.updater.installUpdate();
+            installedViaNativeUpdater = true;
+          } catch (upErr) {
+            console.warn('Global Tauri installUpdate failed:', upErr);
           }
         }
 
@@ -480,14 +526,17 @@ class AppUpdateService {
           this.state.status = 'ready_to_install';
           this.notifyListeners();
 
-          // Relaunch app
-          await this.relaunchApp();
+          // Auto relaunch after 1.5 seconds or let user click restart button
+          setTimeout(async () => {
+            await this.relaunchApp();
+          }, 1500);
           return;
         }
       }
 
-      // C. Fallback for manual DMG / EXE installer download (Opening direct download URL)
+      // D. Fallback for Web browser / environments without native updater
       const targetUrl = this.state.latestRelease.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/latest';
+      const tauriWindow = typeof window !== 'undefined' ? (window as any) : null;
 
       if (tauriWindow) {
         if (tauriWindow.__TAURI__?.shell?.open) {

@@ -2805,9 +2805,10 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                           colors={colors}
                           selectedSizeIds={selectedSizeIds}
                           selectedColorIds={selectedColorIds}
-                          isEditingProd={isEditingProd}
-                          handleCellChange={handleCellChange}
-                          saveProductMatrix={saveProductMatrix}
+                          product={isEditingProd}
+                          matrixGridState={matrixGridState}
+                          onCellChange={handleCellChange}
+                          onSaveMatrix={saveProductMatrix}
                           savingMatrix={savingMatrix}
                         />
                       )}
@@ -2825,18 +2826,18 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                   darkMode={darkMode}
                   warehouseSearch={warehouseSearch}
                   setWarehouseSearch={setWarehouseSearch}
-                  setActiveTab={setActiveTab}
-                  handleExportWarehouseCSV={handleExportWarehouseCSV}
-                  handleExportWarehouseJSON={handleExportWarehouseJSON}
-                  filteredWarehouseItems={filteredWarehouseItems}
+                  onNavigateBarcodes={() => setActiveTab('barcodes')}
+                  onExportCSV={handleExportWarehouseCSV}
+                  onExportJSON={handleExportWarehouseJSON}
+                  inventory={filteredWarehouseItems}
                   products={products}
                   colors={colors}
                   sizes={sizes}
                   localStockEdits={localStockEdits}
                   localPriceEdits={localPriceEdits}
                   localSkuEdits={localSkuEdits}
-                  handleWarehouseLocalChange={handleWarehouseLocalChange}
-                  handleWarehouseQuickSave={handleWarehouseQuickSave}
+                  onLocalChange={handleWarehouseLocalChange}
+                  onQuickSave={handleWarehouseQuickSave}
                   updatingWarehouseId={updatingWarehouseId}
                 />
               )}
