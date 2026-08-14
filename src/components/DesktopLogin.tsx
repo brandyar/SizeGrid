@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { locales } from '../locales';
 import { DirectusAPI } from '../directus';
+import { storageManager } from '../storage';
 import { useRouter } from './Router';
 import { isDesktopEnv } from '../utils/desktop';
 import { APP_VERSION } from '../version';
@@ -20,7 +21,6 @@ import {
   ArrowLeft, 
   AlertCircle, 
   CheckCircle2, 
-  WifiOff, 
   Laptop,
   Check
 } from 'lucide-react';
@@ -66,51 +66,29 @@ export default function DesktopLogin({ lang, setLang, darkMode, setDarkMode }: D
     try {
       if (isLogin) {
         await DirectusAPI.login(email, password);
-        setSuccess(isRtl ? "ورود موفقیت‌آمیز بود! در حال انتقال به پنل دسکتاپ..." : "Login successful! Loading desktop panel...");
+        // Hydrate local database immediately from cloud so offline mode is fully functional
+        await storageManager.hydrateLocalDatabaseFromCloud().catch(() => {});
+        setSuccess(isRtl ? "ورود موفقیت‌آمیز بود! در حال انتقال به پنل مدیریت..." : "Login successful! Redirecting to panel...");
         setTimeout(() => {
           navigate('/dashboard');
-        }, 800);
+        }, 600);
       } else {
         if (!shopName || !shopSlug) {
           throw new Error(isRtl ? "لطفاً تمام فیلدها را پر کنید" : "Please fill in all required fields");
         }
         await DirectusAPI.register(email, password, shopName, shopSlug);
+        // Hydrate local database immediately
+        await storageManager.hydrateLocalDatabaseFromCloud().catch(() => {});
         setSuccess(isRtl ? "ثبت‌نام و ایجاد حساب با موفقیت انجام شد! انتقال به پنل..." : "Store registration successful! Redirecting...");
         setTimeout(() => {
           navigate('/dashboard');
-        }, 800);
+        }, 600);
       }
     } catch (err: any) {
       setError(err.message || (isRtl ? "خطایی در ورود به سیستم رخ داد" : "Authentication error occurred"));
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleOfflineAccess = () => {
-    setError('');
-    setSuccess('');
-    
-    // Check if a registered user session exists in cache
-    const savedUserStr = localStorage.getItem('tankhor_user') || localStorage.getItem('sizegrid_user');
-    if (savedUserStr) {
-      try {
-        const savedUser = JSON.parse(savedUserStr);
-        if (savedUser && savedUser.id && savedUser.id !== 'offline-merchant-local') {
-          setSuccess(isRtl ? "نشست کاربری ثبت‌شده قبلی یافت شد. در حال ورود آفلاین..." : "Saved account session found. Logging in offline...");
-          setTimeout(() => {
-            navigate('/dashboard');
-          }, 600);
-          return;
-        }
-      } catch (e) {}
-    }
-
-    setError(
-      isRtl
-        ? "شما هنوز در سیستم تن‌خور ثبت‌نام نکرده‌اید. لطفاً ابتدا یک‌بار با اتصال به اینترنت ثبت‌نام کنید یا وارد حساب خود شوید."
-        : "You have not registered an account yet. Please connect to the internet once to register or log in."
-    );
   };
 
   const handleDemoFill = () => {
@@ -183,11 +161,11 @@ export default function DesktopLogin({ lang, setLang, darkMode, setDarkMode }: D
           </div>
           <h1 className="text-2xl font-black tracking-tight">
             {isLogin 
-              ? (isRtl ? "ورود به پنل مدیریت دسکتاپ" : "Desktop Merchant Login") 
+              ? (isRtl ? "ورود" : "Login") 
               : (isRtl ? "ثبت‌نام فروشگاه جدید" : "Register New Store")}
           </h1>
           <p className="text-xs text-neutral-400 mt-1.5 font-medium">
-            {isRtl ? "مدیریت پوشاک، راهنمای سایز اختصاصی و انبارداری دو حالته" : "Clothing inventory, custom sizing guides & hybrid storage"}
+            {isRtl ? "مدیریت متمرکز کاتالوگ پوشاک، راهنمای سایز اختصاصی و انبارداری" : "Clothing catalog, custom sizing guides & warehouse management"}
           </p>
         </div>
 
@@ -313,9 +291,6 @@ export default function DesktopLogin({ lang, setLang, darkMode, setDarkMode }: D
               <Sparkles className="w-3 h-3" />
               <span>{isRtl ? "پرکردن نمونه تست" : "Auto fill test info"}</span>
             </button>
-            <span className="text-neutral-500 font-medium">
-              {isRtl ? "پشتیبانی کامل از آفلاین/آنلاین" : "Hybrid Storage Supported"}
-            </span>
           </div>
 
           <button
@@ -329,7 +304,7 @@ export default function DesktopLogin({ lang, setLang, darkMode, setDarkMode }: D
               <>
                 <span>
                   {isLogin 
-                    ? (isRtl ? "ورود به پنل دسکتاپ" : "Login to Desktop") 
+                    ? (isRtl ? "ورود" : "Login") 
                     : (isRtl ? "ایجاد و ساخت فروشگاه" : "Create Store")}
                 </span>
                 {isRtl ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
@@ -337,42 +312,6 @@ export default function DesktopLogin({ lang, setLang, darkMode, setDarkMode }: D
             )}
           </button>
         </form>
-
-        {/* Requirement Note & Offline Entry Button for Existing Users */}
-        <div className="relative my-5">
-          <div className="absolute inset-0 flex items-center">
-            <div className={`w-full border-t ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`} />
-          </div>
-          <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest">
-            <span className={`px-3 ${darkMode ? 'bg-neutral-900 text-neutral-500' : 'bg-white text-neutral-400'}`}>
-              {isRtl ? "نکته مهم استفاده آفلاین" : "IMPORTANT OFFLINE NOTE"}
-            </span>
-          </div>
-        </div>
-
-        <div className={`p-3 rounded-2xl border text-[11px] leading-relaxed font-medium mb-4 ${darkMode ? 'bg-neutral-950/40 border-neutral-800/80 text-neutral-400' : 'bg-neutral-50 border-neutral-200 text-neutral-600'}`}>
-          <p className="flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-            <span>
-              {isRtl 
-                ? "ثبت‌نام اولیه نیازمند اینترنت است تا کاربر در سیستم ثبت گردد. پس از اولین ورود موفق، استفاده از نسخه دسکتاپ برای همیشه به‌صورت ۱۰۰٪ آفلاین و رایگان میسر خواهد بود."
-                : "Initial registration requires internet to register your user account. After first login, desktop mode works 100% offline forever."}
-            </span>
-          </p>
-        </div>
-
-        {/* Saved Session Offline Login Button */}
-        <button
-          type="button"
-          onClick={handleOfflineAccess}
-          disabled={loading}
-          className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs border flex items-center justify-center gap-2 transition-all cursor-pointer ${darkMode ? 'bg-neutral-950/60 border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:border-neutral-700' : 'bg-neutral-50 border-neutral-200 text-neutral-700 hover:bg-neutral-100'}`}
-        >
-          <WifiOff className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-          <span>
-            {isRtl ? "ورود آفلاین به حساب ثبت‌شده قبلی" : "Offline Login to Registered Account"}
-          </span>
-        </button>
 
         {/* Desktop Footer Badge */}
         <div className="mt-6 pt-4 border-t border-neutral-800/40 text-center">

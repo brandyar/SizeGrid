@@ -1,22 +1,22 @@
 {
-  "version": "1.4.7",
+  "version": "1.4.8",
   "releaseDate": "2026-08-14",
   "minSupportedVersion": "1.0.0",
   "minimum_version": "1.0.0",
-  "notes": "• نمایش پویا و خودکار نسخه نرم‌افزار در تمامی هدرهای وب، دسکتاپ و صفحه ورود\n• ارتقا و بهینه‌سازی زیرساخت سنجش و دانلود خودکار بروزرسانی در پس‌زمینه (Background Auto-Updater)\n• رفع ناهماهنگی نسخه‌ها و اتصال مستقیم تمام لینک‌های دانلود به نسخه روز",
+  "notes": "• ذخیره‌سازی نیتیو و بلادرنگ کلیه داده‌ها در دیتابیس بومی دسکتاپ (SQLite)\n• همگام‌سازی و انتقال کامل و خودکار اطلاعات آنلاین به دیتابیس آفلاین محلی در زمان آنلاین شدن یا ورود به حساب\n• بهینه‌سازی و ساده‌سازی رابط کاربری صفحه ورود دسکتاپ",
   "changelog": {
     "fa": [
-      "نمایش پویای نسخه و ویجت وضعیت بروزرسانی در هدر سایت و صفحه ورود دسکتاپ",
-      "همگام‌سازی خودکار و داینامیک لینک‌های دانلود فایل‌های نصبی مک (DMG) و ویندوز (EXE)",
-      "بهبود مکانیزم بررسی و دریافت بسته‌های بروزرسانی در پس‌زمینه (Background Auto-Updater)",
-      "ارتقای نسخه نرم‌افزار به ۱.۴.۷"
+      "ذخیره‌سازی بلادرنگ و پایدار داده‌ها در دیتابیس بومی دسکتاپ (SQLite)",
+      "همگام‌سازی و انتقال کامل و خودکار اطلاعات آنلاین به دیتابیس آفلاین محلی به محض آنلاین شدن یا ورود به حساب",
+      "بهینه‌سازی و ساده‌سازی رابط کاربری و فرم صفحه ورود دسکتاپ",
+      "ارتقای نسخه نرم‌افزار به ۱.۴.۸"
     ],
     "en": [
-      "Dynamic version and update status widget in site header and desktop login header",
-      "Dynamic synchronization of download links for macOS (DMG) and Windows (EXE)",
-      "Enhanced background update checking and auto-download mechanism",
-      "Upgraded application version to 1.4.7"
+      "Native real-time persistence of all store records in SQLite database",
+      "Automatic full data hydration from cloud to offline database on connection or login",
+      "Streamlined and simplified desktop login interface",
+      "Upgraded application version to 1.4.8"
     ]
   },
-  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.7"
+  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.8"
 }

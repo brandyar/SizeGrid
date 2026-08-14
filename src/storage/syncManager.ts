@@ -32,10 +32,19 @@ export class StorageSyncManager implements IStorageAdapter {
         if (this.activeMode === 'cloud_synced') {
           this.syncLocalToCloud().catch(() => {});
         } else {
+          // In offline/hybrid mode, when online becomes available, keep the local offline database updated
+          this.hydrateLocalDatabaseFromCloud().catch(() => {});
           this.notifyListeners();
         }
       });
       window.addEventListener('offline', () => this.notifyListeners());
+
+      // Attempt background initial hydration if online
+      if (navigator.onLine) {
+        setTimeout(() => {
+          this.hydrateLocalDatabaseFromCloud().catch(() => {});
+        }, 1500);
+      }
     }
   }
 
@@ -360,6 +369,28 @@ export class StorageSyncManager implements IStorageAdapter {
       this.localAdapter.clearPendingSyncQueue();
 
       // 9. Pull fresh full dataset from Cloud and update local storage cache (Cloud -> Local Two-way sync)
+      await this.hydrateLocalDatabaseFromCloud();
+
+      return { success: true, syncedCount };
+    } catch (err: any) {
+      this.lastError = err?.message || 'خطا در همگام‌سازی با کلود';
+      return { success: false, syncedCount, error: this.lastError || undefined };
+    } finally {
+      this.syncInProgress = false;
+      this.notifyListeners();
+    }
+  }
+
+  /**
+   * Transfers full online cloud database to local offline SQLite and IndexedDB storage
+   * Ensures the desktop application has complete offline capabilities with latest data
+   */
+  async hydrateLocalDatabaseFromCloud(): Promise<{ success: boolean; count: number; error?: string }> {
+    if (!navigator.onLine) {
+      return { success: false, count: 0, error: 'دستگاه آفلاین است' };
+    }
+
+    try {
       const [freshProds, freshCats, freshSizes, freshColors, freshTpls, freshInv, freshOrders] = await Promise.all([
         DirectusAPI.getProducts().catch(() => []),
         DirectusAPI.getCategories().catch(() => []),
@@ -370,23 +401,36 @@ export class StorageSyncManager implements IStorageAdapter {
         DirectusAPI.getOrders().catch(() => [])
       ]);
 
-      if (freshProds.length > 0) this.localAdapter.setProductsCache(freshProds);
-      if (freshCats.length > 0) this.localAdapter.setCategoriesCache(freshCats);
-      if (freshSizes.length > 0) this.localAdapter.setSizesCache(freshSizes);
-      if (freshColors.length > 0) this.localAdapter.setColorsCache(freshColors);
-      if (freshTpls.length > 0) this.localAdapter.setTemplatesCache(freshTpls);
-      if (freshInv.length > 0) this.localAdapter.setInventoryCache(freshInv);
-      if (freshOrders.length > 0) this.localAdapter.setOrdersCache(freshOrders);
+      const dataset = {
+        products: freshProds,
+        categories: freshCats,
+        sizes: freshSizes,
+        colors: freshColors,
+        templates: freshTpls,
+        inventory: freshInv,
+        orders: freshOrders
+      };
 
+      if ((this.localAdapter as any).persistFullCloudDataset) {
+        await (this.localAdapter as any).persistFullCloudDataset(dataset);
+      } else {
+        if (freshProds.length > 0) this.localAdapter.setProductsCache(freshProds);
+        if (freshCats.length > 0) this.localAdapter.setCategoriesCache(freshCats);
+        if (freshSizes.length > 0) this.localAdapter.setSizesCache(freshSizes);
+        if (freshColors.length > 0) this.localAdapter.setColorsCache(freshColors);
+        if (freshTpls.length > 0) this.localAdapter.setTemplatesCache(freshTpls);
+        if (freshInv.length > 0) this.localAdapter.setInventoryCache(freshInv);
+        if (freshOrders.length > 0) this.localAdapter.setOrdersCache(freshOrders);
+      }
+
+      const totalItems = freshProds.length + freshCats.length + freshSizes.length + freshColors.length + freshTpls.length + freshInv.length + freshOrders.length;
       localStorage.setItem('tankhor_local_last_sync_time', Date.now().toString());
-
-      return { success: true, syncedCount };
-    } catch (err: any) {
-      this.lastError = err?.message || 'خطا در همگام‌سازی با کلود';
-      return { success: false, syncedCount, error: this.lastError || undefined };
-    } finally {
-      this.syncInProgress = false;
       this.notifyListeners();
+
+      return { success: true, count: totalItems };
+    } catch (err: any) {
+      console.warn('[hydrateLocalDatabaseFromCloud] Error hydrating local storage:', err);
+      return { success: false, count: 0, error: err?.message };
     }
   }
 

@@ -706,26 +706,276 @@ export class SQLiteStorageAdapter implements IStorageAdapter {
     return this.localFallback.getSyncStats();
   }
 
-  // --- INTERNAL UTILITIES ---
+  // --- INTERNAL UTILITIES & PERSISTENCE ---
   setProductsCache(products: Product[]): void {
     this.localFallback.setProductsCache(products);
+    this.batchUpsertProducts(products).catch(() => {});
   }
+
   setCategoriesCache(categories: Category[]): void {
     this.localFallback.setCategoriesCache(categories);
+    this.batchUpsertCategories(categories).catch(() => {});
   }
+
   setSizesCache(sizes: Size[]): void {
     this.localFallback.setSizesCache(sizes);
+    this.batchUpsertSizes(sizes).catch(() => {});
   }
+
   setColorsCache(colors: Color[]): void {
     this.localFallback.setColorsCache(colors);
+    this.batchUpsertColors(colors).catch(() => {});
   }
+
   setTemplatesCache(templates: SizeGuideTemplate[]): void {
     this.localFallback.setTemplatesCache(templates);
+    this.batchUpsertTemplates(templates).catch(() => {});
   }
+
   setInventoryCache(inventory: InventoryItem[]): void {
     this.localFallback.setInventoryCache(inventory);
+    this.batchUpsertInventory(inventory).catch(() => {});
   }
+
   setOrdersCache(orders: Order[]): void {
     this.localFallback.setOrdersCache(orders);
+    this.batchUpsertOrders(orders).catch(() => {});
+  }
+
+  /**
+   * Persists a full dataset pulled from cloud directly into the native SQLite database tables
+   */
+  async persistFullCloudDataset(data: {
+    products?: Product[];
+    categories?: Category[];
+    sizes?: Size[];
+    colors?: Color[];
+    templates?: SizeGuideTemplate[];
+    inventory?: InventoryItem[];
+    orders?: Order[];
+  }): Promise<void> {
+    await this.ensureDbReady();
+    const promises: Promise<any>[] = [];
+
+    if (data.products && data.products.length > 0) {
+      this.localFallback.setProductsCache(data.products);
+      promises.push(this.batchUpsertProducts(data.products));
+    }
+    if (data.categories && data.categories.length > 0) {
+      this.localFallback.setCategoriesCache(data.categories);
+      promises.push(this.batchUpsertCategories(data.categories));
+    }
+    if (data.sizes && data.sizes.length > 0) {
+      this.localFallback.setSizesCache(data.sizes);
+      promises.push(this.batchUpsertSizes(data.sizes));
+    }
+    if (data.colors && data.colors.length > 0) {
+      this.localFallback.setColorsCache(data.colors);
+      promises.push(this.batchUpsertColors(data.colors));
+    }
+    if (data.templates && data.templates.length > 0) {
+      this.localFallback.setTemplatesCache(data.templates);
+      promises.push(this.batchUpsertTemplates(data.templates));
+    }
+    if (data.inventory && data.inventory.length > 0) {
+      this.localFallback.setInventoryCache(data.inventory);
+      promises.push(this.batchUpsertInventory(data.inventory));
+    }
+    if (data.orders && data.orders.length > 0) {
+      this.localFallback.setOrdersCache(data.orders);
+      promises.push(this.batchUpsertOrders(data.orders));
+    }
+
+    await Promise.all(promises).catch(err => {
+      console.warn('[SQLite persistFullCloudDataset] batch write error:', err);
+    });
+  }
+
+  private async batchUpsertProducts(products: Product[]): Promise<void> {
+    await this.ensureDbReady();
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        for (const p of products) {
+          await invoke('plugin:sql|execute', {
+            db: this.dbName,
+            query: `INSERT OR REPLACE INTO products (id, local_uuid, updated_at, name_fa, name_en, description_fa, description_en, category, category_id, base_price, image, clothing_type_slug, size_guide_template_id, created_by, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            bindValues: [
+              p.id,
+              p.local_uuid || null,
+              p.updated_at || new Date().toISOString(),
+              p.name_fa || '',
+              p.name_en || p.name_fa || '',
+              p.description_fa || '',
+              p.description_en || '',
+              p.category || 'Clothing',
+              p.category_id || null,
+              p.base_price || 0,
+              p.image || '',
+              p.clothing_type_slug || 'tops',
+              p.size_guide_template_id || null,
+              p.created_by || 'cloud_sync',
+              1
+            ]
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  private async batchUpsertCategories(categories: Category[]): Promise<void> {
+    await this.ensureDbReady();
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        for (const c of categories) {
+          await invoke('plugin:sql|execute', {
+            db: this.dbName,
+            query: `INSERT OR REPLACE INTO categories (id, local_uuid, updated_at, name, system_type, clothing_type_slug) VALUES (?, ?, ?, ?, ?, ?);`,
+            bindValues: [
+              c.id,
+              c.local_uuid || null,
+              c.updated_at || new Date().toISOString(),
+              c.name || c.name_fa || '',
+              c.system_type || 1,
+              c.clothing_type_slug || 'tops'
+            ]
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  private async batchUpsertSizes(sizes: Size[]): Promise<void> {
+    await this.ensureDbReady();
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        for (const s of sizes) {
+          await invoke('plugin:sql|execute', {
+            db: this.dbName,
+            query: `INSERT OR REPLACE INTO sizes (id, local_uuid, updated_at, name, sort_order) VALUES (?, ?, ?, ?, ?);`,
+            bindValues: [
+              s.id,
+              s.local_uuid || null,
+              s.updated_at || new Date().toISOString(),
+              s.name || '',
+              s.sort_order || 10
+            ]
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  private async batchUpsertColors(colors: Color[]): Promise<void> {
+    await this.ensureDbReady();
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        for (const col of colors) {
+          await invoke('plugin:sql|execute', {
+            db: this.dbName,
+            query: `INSERT OR REPLACE INTO colors (id, local_uuid, updated_at, name_fa, name_en, hex_code) VALUES (?, ?, ?, ?, ?, ?);`,
+            bindValues: [
+              col.id,
+              col.local_uuid || null,
+              col.updated_at || new Date().toISOString(),
+              col.name_fa || '',
+              col.name_en || col.name_fa || '',
+              col.hex_code || '#000000'
+            ]
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  private async batchUpsertTemplates(templates: SizeGuideTemplate[]): Promise<void> {
+    await this.ensureDbReady();
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        for (const tpl of templates) {
+          await invoke('plugin:sql|execute', {
+            db: this.dbName,
+            query: `INSERT OR REPLACE INTO size_templates (id, local_uuid, updated_at, name, measurements, clothing_type_slug) VALUES (?, ?, ?, ?, ?, ?);`,
+            bindValues: [
+              tpl.id,
+              tpl.local_uuid || null,
+              tpl.updated_at || new Date().toISOString(),
+              tpl.name || '',
+              JSON.stringify(tpl.measurements || []),
+              tpl.clothing_type_slug || 'tops'
+            ]
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  private async batchUpsertInventory(inventory: InventoryItem[]): Promise<void> {
+    await this.ensureDbReady();
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        for (const inv of inventory) {
+          await invoke('plugin:sql|execute', {
+            db: this.dbName,
+            query: `INSERT OR REPLACE INTO inventory (id, local_uuid, updated_at, product_id, color_id, size_id, stock, price, sku) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+            bindValues: [
+              inv.id || Math.floor(Math.random() * 1000000),
+              inv.local_uuid || null,
+              inv.updated_at || new Date().toISOString(),
+              inv.product_id,
+              inv.color_id,
+              inv.size_id,
+              inv.stock || 0,
+              inv.price || 0,
+              inv.sku || ''
+            ]
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }
+
+  private async batchUpsertOrders(orders: Order[]): Promise<void> {
+    await this.ensureDbReady();
+    try {
+      const tauri = getTauriGlobal();
+      const win = typeof window !== 'undefined' ? (window as any) : {};
+      const invoke = tauri?.core?.invoke || tauri?.invoke || win.__TAURI_INVOKE__ || win.__TAURI__?.invoke;
+      if (typeof invoke === 'function') {
+        for (const ord of orders) {
+          await invoke('plugin:sql|execute', {
+            db: this.dbName,
+            query: `INSERT OR REPLACE INTO orders (id, local_uuid, updated_at, status, order_total, date_created, order_items) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+            bindValues: [
+              ord.id,
+              ord.local_uuid || null,
+              ord.updated_at || new Date().toISOString(),
+              ord.status || 'published',
+              ord.order_total || 0,
+              ord.date_created || new Date().toISOString(),
+              JSON.stringify(ord.order_items || [])
+            ]
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {}
   }
 }
