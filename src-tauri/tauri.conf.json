@@ -21,10 +21,6 @@
         "relaunch": true,
         "exit": true
       },
-      "updater": {
-        "all": true,
-        "dialog": false
-      },
       "shell": {
         "all": false,
         "open": true
