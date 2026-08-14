@@ -3,6 +3,8 @@ import { locales } from '../locales';
 import { DirectusAPI } from '../directus';
 import { storageManager, SyncStats } from '../storage';
 import { useRouter } from './Router';
+import { APP_VERSION } from '../version';
+import { AppUpdateWidget } from './AppUpdateWidget';
 import { 
   Sparkles, 
   Grid3X3, 
@@ -200,9 +202,7 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
               <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 {t.brand_name}
               </span>
-              <span className="text-[9px] sm:text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 sm:px-2 py-0.5 rounded-full font-black">
-                v1.4.6
-              </span>
+              <AppUpdateWidget compact />
             </div>
           </div>
 
@@ -259,7 +259,7 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
           {/* Subtle Pill Tag */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[11px] font-bold shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-            <span>{isRtl ? "نسخه دسکتاپ تن‌خور (۱۰۰٪ رایگان و آفلاین)" : "Tankhor Free Desktop App (100% Offline)"}</span>
+            <span>{isRtl ? `نسخه دسکتاپ تن‌خور v${APP_VERSION} (۱۰۰٪ رایگان و آفلاین)` : `Tankhor Free Desktop App v${APP_VERSION} (100% Offline)`}</span>
           </div>
           
           {/* Clean Headline */}
@@ -275,7 +275,7 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
           {/* Minimalist Desktop Software Download Actions (Windows & macOS) */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5" id="download-section">
             <a
-              href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_x64-setup.exe"
+              href={`https://github.com/brandyar/SizeGrid/releases/download/v${APP_VERSION}/Tankhor_${APP_VERSION}_x64-setup.exe`}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-6 py-3.5 font-bold text-xs text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-sky-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -836,17 +836,17 @@ export default function LandingPage({ lang, setLang, darkMode, setDarkMode }: La
                     {isRtl ? "۱. دریافت مستقیم فایل مک (DMG)" : "1. Download macOS DMG"}
                   </span>
                   <span className="text-[10px] font-mono bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md font-bold">
-                    v1.4.6 (Apple Silicon / Intel)
+                    v{APP_VERSION} (Apple Silicon / Intel)
                   </span>
                 </div>
                 <a
-                  href="https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_aarch64.dmg"
+                  href={`https://github.com/brandyar/SizeGrid/releases/download/v${APP_VERSION}/Tankhor_${APP_VERSION}_aarch64.dmg`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-extrabold rounded-xl shadow-lg shadow-sky-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer text-xs"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{isRtl ? "دانلود فایل Tankhor_1.4.6_aarch64.dmg" : "Download Tankhor_1.4.6_aarch64.dmg"}</span>
+                  <span>{isRtl ? `دانلود فایل Tankhor_${APP_VERSION}_aarch64.dmg` : `Download Tankhor_${APP_VERSION}_aarch64.dmg`}</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>

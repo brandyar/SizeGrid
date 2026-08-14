@@ -3,6 +3,8 @@ import { locales } from '../locales';
 import { DirectusAPI } from '../directus';
 import { useRouter } from './Router';
 import { isDesktopEnv } from '../utils/desktop';
+import { APP_VERSION } from '../version';
+import { AppUpdateWidget } from './AppUpdateWidget';
 import { 
   Grid3X3, 
   Lock, 
@@ -129,16 +131,17 @@ export default function DesktopLogin({ lang, setLang, darkMode, setDarkMode }: D
 
       {/* Floating Top Controls (Theme & Language & Web Preview Navigation) */}
       <div className="absolute top-5 right-5 left-5 flex items-center justify-between z-20">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="p-2 bg-gradient-to-tr from-sky-600 to-indigo-600 text-white rounded-xl shadow-md">
             <Grid3X3 className="w-5 h-5" />
           </div>
           <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
             {t.brand_name}
           </span>
-          <span className="text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1">
+          <AppUpdateWidget compact />
+          <span className="hidden sm:inline-flex text-[10px] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full font-extrabold items-center gap-1">
             <Laptop className="w-3 h-3" />
-            v2.5 {isDesktop ? 'Desktop App' : 'Desktop Edition'}
+            v{APP_VERSION} {isDesktop ? 'Desktop App' : 'Desktop Edition'}
           </span>
         </div>
 

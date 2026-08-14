@@ -1579,7 +1579,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'orders' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
             >
               <ShoppingCart className="w-4 h-4" />
-              <span>{isRtl ? "سفارشات و فاکتورها" : "Orders & POS"}</span>
+              <span>{isRtl ? "مدیریت سفارشات" : "Orders & POS"}</span>
             </button>
 
             <button
@@ -1587,7 +1587,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'warehouse' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
             >
               <Warehouse className="w-4 h-4" />
-              <span>{isRtl ? "موجودی انبار" : "Warehouse Stock"}</span>
+              <span>{isRtl ? "مدیریت انبار" : "Warehouse Stock"}</span>
             </button>
 
             <button
@@ -1595,7 +1595,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'barcodes' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
             >
               <BarcodeIcon className="w-4 h-4" />
-              <span>{isRtl ? "چاپ بارکد و اتیکت انبار" : "Barcode & Labels"}</span>
+              <span>{isRtl ? "چاپ بارکد" : "Barcode Labels"}</span>
             </button>
 
             <button
@@ -1603,7 +1603,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'categories' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
             >
               <Layers className="w-4 h-4" />
-              <span>{isRtl ? "مدیریت دسته‌بندی" : "Category Manager"}</span>
+              <span>{isRtl ? "دسته‌بندی کالا" : "Category Manager"}</span>
             </button>
 
             <button
@@ -1611,7 +1611,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'templates' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
             >
               <Ruler className="w-4 h-4" />
-              <span>{isRtl ? "قالب‌های سایزبندی" : "Size Templates"}</span>
+              <span>{isRtl ? "قالب‌های سایز" : "Size Templates"}</span>
             </button>
 
             <button
@@ -1627,7 +1627,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               className={`w-full py-2.5 px-3.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${activeTab === 'compressor' ? 'bg-sky-600 text-white shadow-sm' : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100')}`}
             >
               <FileImage className="w-4 h-4" />
-              <span>{isRtl ? "فشرده‌سازی تصویر" : "Image Compressor"}</span>
+              <span>{isRtl ? "بهینه‌ساز تصویر" : "Image Compressor"}</span>
             </button>
 
             <button
@@ -2005,13 +2005,18 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                       </div>
 
                       {/* CONSOLIDATED EDIT TABS */}
-                      <div className={`flex border-b mb-6 overflow-x-auto gap-2 ${darkMode ? 'border-neutral-800/60' : 'border-neutral-200'}`}>
+                      <div className={`flex flex-wrap sm:flex-nowrap p-1.5 rounded-2xl mb-6 gap-1.5 border transition-all ${darkMode ? 'bg-neutral-950/60 border-neutral-800/80' : 'bg-neutral-100/80 border-neutral-200'}`}>
                         <button
                           type="button"
                           onClick={() => setEditTab('general')}
-                          className={`py-2 px-4 text-xs font-extrabold border-b-2 transition-all whitespace-nowrap cursor-pointer ${editTab === 'general' ? 'border-sky-500 text-sky-400' : (darkMode ? 'border-transparent text-neutral-400 hover:text-neutral-200' : 'border-transparent text-neutral-500 hover:text-neutral-900')}`}
+                          className={`flex-1 min-w-[130px] py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                            editTab === 'general'
+                              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+                              : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50')
+                          }`}
                         >
-                          <span>{isRtl ? "۱. مشخصات عمومی، رنگ و سایز" : "1. General & Attribute Selection"}</span>
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>{isRtl ? "مشخصات عمومی" : "General Info"}</span>
                         </button>
                         
                         <button
@@ -2023,9 +2028,16 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                             }
                             setEditTab('guides');
                           }}
-                          className={`py-2 px-4 text-xs font-extrabold border-b-2 transition-all whitespace-nowrap cursor-pointer ${isEditingProd.id === 0 ? 'opacity-40 cursor-not-allowed' : ''} ${editTab === 'guides' ? 'border-sky-500 text-sky-400' : (darkMode ? 'border-transparent text-neutral-400 hover:text-neutral-200' : 'border-transparent text-neutral-500 hover:text-neutral-900')}`}
+                          className={`flex-1 min-w-[130px] py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                            isEditingProd.id === 0 ? 'opacity-40 cursor-not-allowed' : ''
+                          } ${
+                            editTab === 'guides'
+                              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+                              : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50')
+                          }`}
                         >
-                          <span>{isRtl ? "۲. راهنمای علمی سایز مشتری" : "2. Sizing Advisor Rules"}</span>
+                          <Ruler className="w-3.5 h-3.5" />
+                          <span>{isRtl ? "راهنمای سایز" : "Size Guide"}</span>
                         </button>
 
                         <button
@@ -2037,93 +2049,92 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                             }
                             setEditTab('matrix');
                           }}
-                          className={`py-2 px-4 text-xs font-extrabold border-b-2 transition-all whitespace-nowrap cursor-pointer ${isEditingProd.id === 0 ? 'opacity-40 cursor-not-allowed' : ''} ${editTab === 'matrix' ? 'border-sky-500 text-sky-400' : (darkMode ? 'border-transparent text-neutral-400 hover:text-neutral-200' : 'border-transparent text-neutral-500 hover:text-neutral-900')}`}
+                          className={`flex-1 min-w-[130px] py-2 px-3.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                            isEditingProd.id === 0 ? 'opacity-40 cursor-not-allowed' : ''
+                          } ${
+                            editTab === 'matrix'
+                              ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
+                              : (darkMode ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/50' : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200/50')
+                          }`}
                         >
-                          <span>{isRtl ? "۳. ماتریس ۲ بعدی انبار محصول" : "3. 2D Stock Matrix Grid"}</span>
+                          <Warehouse className="w-3.5 h-3.5" />
+                          <span>{isRtl ? "مدیریت انبار" : "Stock Matrix"}</span>
                         </button>
                       </div>
 
                       {/* SUBTAB 1: GENERAL INFO */}
                       {editTab === 'general' && (
                         <form onSubmit={saveProductSubmit} className="space-y-6">
-                          <div className="grid sm:grid-cols-2 gap-4">
-                            <div>
-                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-700'}`}>{t.product_name_fa}</label>
+                          {/* PRODUCT NAME & BASE PRICE (Synced with Directus title & base_price) */}
+                          <div className="grid sm:grid-cols-3 gap-4">
+                            <div className="sm:col-span-2">
+                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                                {isRtl ? "نام محصول" : "Product Name"}
+                              </label>
                               <input
                                 type="text"
                                 required
                                 value={prodFormNameFa}
-                                onChange={(e) => setProdFormNameFa(e.target.value)}
-                                placeholder="مثال: هودی نخی کلاه‌دار"
-                                className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
+                                onChange={(e) => {
+                                  setProdFormNameFa(e.target.value);
+                                  setProdFormNameEn(e.target.value);
+                                }}
+                                placeholder={isRtl ? "مثال: هودی نخی کلاه‌دار زمستانه" : "e.g. Winter Cotton Hooded Sweatshirt"}
+                                className={`w-full px-3.5 py-2.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600' : 'bg-white border-neutral-300 text-neutral-900 placeholder-neutral-400'}`}
                               />
                             </div>
 
                             <div>
-                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-700'}`}>{t.product_name_en}</label>
-                              <input
-                                type="text"
-                                required
-                                value={prodFormNameEn}
-                                onChange={(e) => setProdFormNameEn(e.target.value)}
-                                placeholder="e.g. Cotton Hooded Sweatshirt"
-                                className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 text-left dir-ltr ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid sm:grid-cols-2 gap-4">
-                            <div>
-                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-700'}`}>{t.desc_fa}</label>
-                              <textarea
-                                rows={3}
-                                value={prodFormDescFa}
-                                onChange={(e) => setProdFormDescFa(e.target.value)}
-                                placeholder="شرح الیاف، قواره و شرایط شستشو..."
-                                className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
-                              />
-                            </div>
-
-                            <div>
-                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-700'}`}>{t.desc_en}</label>
-                              <textarea
-                                rows={3}
-                                value={prodFormDescEn}
-                                onChange={(e) => setProdFormDescEn(e.target.value)}
-                                placeholder="English material specifications, style details..."
-                                className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 text-left dir-ltr ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid sm:grid-cols-3 gap-4">
-                            <div>
-                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-700'}`}>{t.base_price}</label>
+                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                                {isRtl ? "قیمت پایه (تومان)" : "Base Price"}
+                              </label>
                               <input
                                 type="number"
                                 required
+                                min="0"
                                 value={prodFormBasePrice}
                                 onChange={(e) => setProdFormBasePrice(Number(e.target.value))}
-                                className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
+                                className={`w-full px-3.5 py-2.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-900'}`}
+                              />
+                            </div>
+                          </div>
+
+                          {/* PRODUCT DESCRIPTION & CATEGORY (Synced with Directus description & category_id) */}
+                          <div className="grid sm:grid-cols-3 gap-4">
+                            <div className="sm:col-span-2">
+                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                                {isRtl ? "توضیحات و مشخصات محصول" : "Product Description"}
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={prodFormDescFa}
+                                onChange={(e) => {
+                                  setProdFormDescFa(e.target.value);
+                                  setProdFormDescEn(e.target.value);
+                                }}
+                                placeholder={isRtl ? "شرح الیاف و جنس پارچه، قواره، ویژگی‌های طراحی و شرایط شستشو..." : "Detailed fabric composition, fit, care instructions..."}
+                                className={`w-full px-3.5 py-2.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600' : 'bg-white border-neutral-300 text-neutral-900 placeholder-neutral-400'}`}
                               />
                             </div>
 
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
-                                <label className={`text-xs font-bold ${darkMode ? 'text-neutral-400' : 'text-neutral-700'}`}>{t.category}</label>
+                                <label className={`text-xs font-bold ${darkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                                  {isRtl ? "دسته‌بندی محصول" : "Category"}
+                                </label>
                                 <button
                                   type="button"
                                   onClick={() => setShowAddCategoryModal(true)}
                                   className="text-[10px] font-extrabold text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer"
                                 >
                                   <Plus className="w-3 h-3" />
-                                  <span>{isRtl ? "افزودن دسته‌بندی جدید" : "Add New Category"}</span>
+                                  <span>{isRtl ? "افزودن دسته" : "Add New"}</span>
                                 </button>
                               </div>
                               <select
                                 value={prodFormCategory}
                                 onChange={(e) => setProdFormCategory(e.target.value)}
-                                className={`w-full px-3 py-2.5 rounded-lg text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-neutral-50 border-neutral-200 text-neutral-900'}`}
+                                className={`w-full px-3.5 py-2.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white' : 'bg-white border-neutral-300 text-neutral-900'}`}
                               >
                                 {categoriesList.map(cat => (
                                   <option key={cat.id} value={cat.name}>
@@ -2140,88 +2151,89 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                 )}
                               </select>
                             </div>
+                          </div>
 
-                            <div>
-                              <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-400' : 'text-neutral-700'}`}>
-                                {isRtl ? "تصویر کالا (آپلود تصویر یا آدرس مستقیم)" : "Product Image (Upload or Direct URL)"}
-                              </label>
-                              
-                              <div className="space-y-3">
-                                {prodFormImage ? (
-                                  <div className={`relative group rounded-xl overflow-hidden border aspect-video flex items-center justify-center ${darkMode ? 'border-white/10 bg-neutral-950/40' : 'border-neutral-200 bg-neutral-100'}`}>
-                                    <img src={prodFormImage} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                    <div className="absolute inset-0 bg-neutral-950/80 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-all duration-200">
-                                      <button
-                                        type="button"
-                                        onClick={() => setProdFormImage('')}
-                                        className="p-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                        <span>{isRtl ? "حذف تصویر" : "Delete Image"}</span>
-                                      </button>
-                                    </div>
+                          {/* PRODUCT IMAGE & UPLOAD */}
+                          <div className="space-y-2">
+                            <label className={`block text-xs font-bold mb-1.5 ${darkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                              {isRtl ? "تصویر کالا (آپلود تصویر یا آدرس مستقیم)" : "Product Image (Upload or Direct URL)"}
+                            </label>
+                            
+                            <div className="space-y-3">
+                              {prodFormImage ? (
+                                <div className={`relative group rounded-2xl overflow-hidden border aspect-video flex items-center justify-center ${darkMode ? 'border-white/10 bg-neutral-950/40' : 'border-neutral-200 bg-neutral-100'}`}>
+                                  <img src={prodFormImage} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                                  <div className="absolute inset-0 bg-neutral-950/80 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-all duration-200">
+                                    <button
+                                      type="button"
+                                      onClick={() => setProdFormImage('')}
+                                      className="p-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      <span>{isRtl ? "حذف تصویر" : "Delete Image"}</span>
+                                    </button>
                                   </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-5 transition-all cursor-pointer text-center group ${
-                                      prodFormStatus === 'saving' 
-                                        ? 'border-sky-500 bg-sky-500/10' 
-                                        : (darkMode ? 'border-neutral-800 hover:border-sky-500/50 bg-neutral-950/20 hover:bg-sky-500/5' : 'border-neutral-300 hover:border-sky-500/50 bg-neutral-50 hover:bg-sky-50/50')
-                                    }`}>
-                                      {prodFormStatus === 'saving' ? (
-                                        <div className="flex flex-col items-center gap-2 py-2">
-                                          <Loader2 className="w-7 h-7 text-sky-400 animate-spin" />
-                                          <span className="text-xs font-bold text-sky-400">
-                                            {isRtl ? "در حال فشرده‌سازی و آپلود..." : "Compressing & Uploading..."}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <>
-                                          <Upload className="w-7 h-7 text-neutral-400 group-hover:text-sky-500 group-hover:scale-110 transition-all mb-1.5" />
-                                          <span className={`text-xs font-extrabold group-hover:text-sky-500 ${darkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
-                                            {isRtl ? "انتخاب تصویر برای فشرده‌سازی و آپلود" : "Click to Compress & Upload Image"}
-                                          </span>
-                                          <span className="text-[10px] text-neutral-400 mt-1 leading-relaxed">
-                                            {isRtl ? "تصویر به‌صورت خودکار فشرده و در دیتابیس آپلود می‌شود" : "Compressed in-browser via canvas for fast uploads"}
-                                          </span>
-                                        </>
-                                      )}
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        disabled={prodFormStatus === 'saving'}
-                                        className="hidden"
-                                        onChange={async (e) => {
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                            try {
-                                              setProdFormStatus('saving');
-                                              setError('');
-                                              const url = await DirectusAPI.uploadProductImage(file);
-                                              setProdFormImage(url);
-                                            } catch (err: any) {
-                                              setError(err.message || (isRtl ? "خطا در آپلود تصویر" : "Error uploading image"));
-                                            } finally {
-                                              setProdFormStatus('idle');
-                                              e.target.value = '';
-                                            }
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-5 transition-all cursor-pointer text-center group ${
+                                    prodFormStatus === 'saving' 
+                                      ? 'border-sky-500 bg-sky-500/10' 
+                                      : (darkMode ? 'border-neutral-800 hover:border-sky-500/50 bg-neutral-950/20 hover:bg-sky-500/5' : 'border-neutral-300 hover:border-sky-500/50 bg-neutral-50 hover:bg-sky-50/50')
+                                  }`}>
+                                    {prodFormStatus === 'saving' ? (
+                                      <div className="flex flex-col items-center gap-2 py-2">
+                                        <Loader2 className="w-7 h-7 text-sky-400 animate-spin" />
+                                        <span className="text-xs font-bold text-sky-400">
+                                          {isRtl ? "در حال فشرده‌سازی و آپلود..." : "Compressing & Uploading..."}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <Upload className="w-7 h-7 text-neutral-400 group-hover:text-sky-500 group-hover:scale-110 transition-all mb-1.5" />
+                                        <span className={`text-xs font-extrabold group-hover:text-sky-500 ${darkMode ? 'text-neutral-300' : 'text-neutral-700'}`}>
+                                          {isRtl ? "انتخاب تصویر برای فشرده‌سازی و آپلود" : "Click to Compress & Upload Image"}
+                                        </span>
+                                        <span className="text-[10px] text-neutral-400 mt-1 leading-relaxed">
+                                          {isRtl ? "تصویر به‌صورت خودکار فشرده و در دیتابیس آپلود می‌شود" : "Compressed in-browser via canvas for fast uploads"}
+                                        </span>
+                                      </>
+                                    )}
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      disabled={prodFormStatus === 'saving'}
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          try {
+                                            setProdFormStatus('saving');
+                                            setError('');
+                                            const url = await DirectusAPI.uploadProductImage(file);
+                                            setProdFormImage(url);
+                                          } catch (err: any) {
+                                            setError(err.message || (isRtl ? "خطا در آپلود تصویر" : "Error uploading image"));
+                                          } finally {
+                                            setProdFormStatus('idle');
+                                            e.target.value = '';
                                           }
-                                        }}
-                                      />
-                                    </label>
+                                        }
+                                      }}
+                                    />
+                                  </label>
 
-                                    <div className="relative flex items-center gap-2 pt-1">
-                                      <input
-                                        type="url"
-                                        placeholder={isRtl ? "یا آدرس لینک مستقیم تصویر را وارد کنید (https://...)" : "Or paste image URL (https://...)"}
-                                        value={prodFormImage}
-                                        onChange={(e) => setProdFormImage(e.target.value)}
-                                        className={`w-full px-3 py-1.5 rounded-lg text-xs border focus:outline-none focus:ring-1 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600' : 'bg-neutral-50 border-neutral-200 text-neutral-900 placeholder-neutral-400'}`}
-                                      />
-                                    </div>
+                                  <div className="relative flex items-center gap-2 pt-1">
+                                    <input
+                                      type="url"
+                                      placeholder={isRtl ? "یا آدرس لینک مستقیم تصویر را وارد کنید (https://...)" : "Or paste image URL (https://...)"}
+                                      value={prodFormImage}
+                                      onChange={(e) => setProdFormImage(e.target.value)}
+                                      className={`w-full px-3.5 py-2 rounded-xl text-xs border focus:outline-none focus:ring-1 focus:ring-sky-500 ${darkMode ? 'bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600' : 'bg-white border-neutral-300 text-neutral-900 placeholder-neutral-400'}`}
+                                    />
                                   </div>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -2796,21 +2808,47 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                       )}
 
                       {/* SUBTAB 3: 2D STOCK MATRIX GRID */}
-                      {editTab === 'matrix' && isEditingProd.id > 0 && (
-                        <ProductMatrixEditor
-                          t={t}
-                          isRtl={isRtl}
-                          darkMode={darkMode}
-                          sizes={sizes}
-                          colors={colors}
-                          selectedSizeIds={selectedSizeIds}
-                          selectedColorIds={selectedColorIds}
-                          product={isEditingProd}
-                          matrixGridState={matrixGridState}
-                          onCellChange={handleCellChange}
-                          onSaveMatrix={saveProductMatrix}
-                          savingMatrix={savingMatrix}
-                        />
+                      {editTab === 'matrix' && (
+                        isEditingProd.id > 0 ? (
+                          <ProductMatrixEditor
+                            t={t}
+                            isRtl={isRtl}
+                            darkMode={darkMode}
+                            sizes={sizes}
+                            colors={colors}
+                            selectedSizeIds={selectedSizeIds}
+                            selectedColorIds={selectedColorIds}
+                            product={isEditingProd}
+                            matrixGridState={matrixGridState}
+                            onCellChange={handleCellChange}
+                            onSaveMatrix={saveProductMatrix}
+                            savingMatrix={savingMatrix}
+                          />
+                        ) : (
+                          <div className={`p-8 rounded-2xl border text-center space-y-4 ${darkMode ? 'bg-neutral-950/40 border-neutral-800 text-neutral-400' : 'bg-neutral-50 border-neutral-200 text-neutral-600'}`}>
+                            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center mx-auto">
+                              <Warehouse className="w-6 h-6" />
+                            </div>
+                            <div className="space-y-1">
+                              <h3 className={`text-sm font-extrabold ${darkMode ? 'text-white' : 'text-neutral-900'}`}>
+                                {isRtl ? "ابتدا مشخصات عمومی را ثبت کنید" : "Save General Info First"}
+                              </h3>
+                              <p className="text-xs max-w-md mx-auto leading-relaxed">
+                                {isRtl 
+                                  ? "برای دسترسی به ماتریس مدیریت انبار و متغیرهای رنگ و سایز، ابتدا دکمه «ایجاد محصول» را در تب مشخصات عمومی بزنید تا کالا ذخیره شود."
+                                  : "To configure the stock matrix and variants, please first save the product in the General Info tab."}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditTab('general')}
+                              className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer shadow-lg shadow-sky-600/10"
+                            >
+                              <FileText className="w-4 h-4" />
+                              <span>{isRtl ? "بازگشت به مشخصات عمومی" : "Back to General Info"}</span>
+                            </button>
+                          </div>
+                        )
                       )}
 
                     </div>
@@ -2829,7 +2867,7 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                   onNavigateBarcodes={() => setActiveTab('barcodes')}
                   onExportCSV={handleExportWarehouseCSV}
                   onExportJSON={handleExportWarehouseJSON}
-                  inventory={filteredWarehouseItems}
+                  inventory={warehouseInventory}
                   products={products}
                   colors={colors}
                   sizes={sizes}

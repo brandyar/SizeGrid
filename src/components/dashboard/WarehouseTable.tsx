@@ -66,14 +66,14 @@ const WarehouseTableRow: React.FC<WarehouseTableRowProps> = React.memo(({
           </div>
           <div>
             <p className={`font-extrabold ${darkMode ? 'text-neutral-200' : 'text-neutral-900'}`}>
-              {isRtl ? product.name_fa : product.name_en}
+              {isRtl ? (product.name_fa || product.name_en || 'بدون نام') : (product.name_en || product.name_fa || 'Untitled')}
             </p>
             <span
-              className={`text-[9px] px-1 py-0.2 rounded inline-block mt-0.5 font-bold ${
+              className={`text-[9px] px-1.5 py-0.5 rounded inline-block mt-0.5 font-bold ${
                 darkMode ? 'bg-neutral-950/30 text-neutral-400' : 'bg-neutral-100 text-neutral-600'
               }`}
             >
-              {product.category}
+              {product.category || 'عمومی'}
             </span>
           </div>
         </div>
@@ -82,24 +82,24 @@ const WarehouseTableRow: React.FC<WarehouseTableRowProps> = React.memo(({
       {/* Color column */}
       <td className="p-3">
         <div
-          className={`inline-flex items-center gap-2 px-2 py-1 rounded border text-[10px] font-bold ${
+          className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg border text-[10px] font-bold ${
             darkMode
               ? 'bg-neutral-900/30 border-neutral-800 text-neutral-300'
               : 'bg-neutral-50 border-neutral-200 text-neutral-800'
           }`}
         >
           <span
-            className="w-3 h-3 rounded-full border border-neutral-400 shadow-sm"
-            style={{ backgroundColor: color?.hex_code }}
+            className="w-3 h-3 rounded-full border border-neutral-400 shadow-sm shrink-0"
+            style={{ backgroundColor: color?.hex_code || '#888' }}
           />
-          <span>{isRtl ? color?.name_fa : color?.name_en}</span>
+          <span>{isRtl ? (color?.name_fa || color?.name_en || 'نامشخص') : (color?.name_en || color?.name_fa || 'Unknown')}</span>
         </div>
       </td>
 
       {/* Size column */}
       <td className="p-3">
         <span className="px-3 py-1 bg-sky-600/10 text-sky-400 font-extrabold border border-sky-500/20 rounded-lg text-xs">
-          {size?.name}
+          {size?.name || '-'}
         </span>
       </td>
 
@@ -236,17 +236,17 @@ export const WarehouseTable: React.FC<WarehouseTableProps> = React.memo(({
   isRtl,
 }) => {
   const filteredItems = useMemo(() => {
-    if (!warehouseSearch.trim()) return inventory;
+    if (!warehouseSearch.trim()) return inventory || [];
     const query = warehouseSearch.toLowerCase().trim();
-    return inventory.filter((item) => {
-      const prod = products.find((p) => p.id === item.product_id);
-      const col = colors.find((c) => c.id === item.color_id);
-      const sz = sizes.find((s) => s.id === item.size_id);
+    return (inventory || []).filter((item) => {
+      const prod = (products || []).find((p) => String(p.id) === String(item.product_id));
+      const col = (colors || []).find((c) => String(c.id) === String(item.color_id));
+      const sz = (sizes || []).find((s) => String(s.id) === String(item.size_id));
 
-      const nameMatch = prod?.name_fa?.toLowerCase().includes(query) || prod?.name_en?.toLowerCase().includes(query);
-      const colMatch = col?.name_fa?.toLowerCase().includes(query) || col?.name_en?.toLowerCase().includes(query);
-      const sizeMatch = sz?.name?.toLowerCase().includes(query);
-      const skuMatch = item.sku?.toLowerCase().includes(query) || localSkuEdits[item.id]?.toLowerCase().includes(query);
+      const nameMatch = (prod?.name_fa || prod?.name_en || '').toLowerCase().includes(query);
+      const colMatch = (col?.name_fa || col?.name_en || '').toLowerCase().includes(query);
+      const sizeMatch = (sz?.name || '').toLowerCase().includes(query);
+      const skuMatch = (item?.sku || '').toLowerCase().includes(query) || (localSkuEdits?.[item.id] || '').toLowerCase().includes(query);
 
       return nameMatch || colMatch || sizeMatch || skuMatch;
     });
@@ -358,9 +358,9 @@ export const WarehouseTable: React.FC<WarehouseTableProps> = React.memo(({
             </thead>
             <tbody>
               {filteredItems.map((item) => {
-                const matchedProd = products.find((p) => p.id === item.product_id);
-                const matchedCol = colors.find((c) => c.id === item.color_id);
-                const matchedSize = sizes.find((s) => s.id === item.size_id);
+                const matchedProd = products.find((p) => String(p.id) === String(item.product_id));
+                const matchedCol = colors.find((c) => String(c.id) === String(item.color_id));
+                const matchedSize = sizes.find((s) => String(s.id) === String(item.size_id));
 
                 if (!matchedProd) return null;
 
@@ -401,9 +401,9 @@ export const WarehouseTable: React.FC<WarehouseTableProps> = React.memo(({
           {/* Responsive Mobile Card View */}
           <div className="sm:hidden divide-y divide-neutral-800 p-2 space-y-4">
             {filteredItems.map((item) => {
-              const matchedProd = products.find((p) => p.id === item.product_id);
-              const matchedCol = colors.find((c) => c.id === item.color_id);
-              const matchedSize = sizes.find((s) => s.id === item.size_id);
+              const matchedProd = products.find((p) => String(p.id) === String(item.product_id));
+              const matchedCol = colors.find((c) => String(c.id) === String(item.color_id));
+              const matchedSize = sizes.find((s) => String(s.id) === String(item.size_id));
 
               if (!matchedProd) return null;
 

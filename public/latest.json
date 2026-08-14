@@ -1,21 +1,21 @@
 {
-  "version": "1.4.6",
-  "notes": "• معماری جدید کامپوننت‌های داشبورد و شکستن فایل یکپارچه به زیرکامپوننت‌های ماژولار\n• مدیریت مرکزی حالت‌های داشبورد و ماتریس انبار با Zustand\n• بهبود سرعت رندر، بهینه‌سازی حافظه و کارایی لایه ذخیره‌سازی",
-  "pub_date": "2026-08-13T10:00:00Z",
+  "version": "1.4.7",
+  "notes": "• نمایش پویا و خودکار نسخه نرم‌افزار در تمامی هدرهای وب، دسکتاپ و صفحه ورود\n• ارتقا و بهینه‌سازی زیرساخت سنجش و دانلود خودکار بروزرسانی در پس‌زمینه (Background Auto-Updater)\n• رفع ناهماهنگی نسخه‌ها و اتصال مستقیم تمام لینک‌های دانلود به نسخه روز",
+  "pub_date": "2026-08-14T10:00:00Z",
   "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y=",
-  "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_x64-setup.exe",
+  "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.7/Tankhor_1.4.7_x64-setup.exe",
   "minimum_version": "1.0.0",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_x64-setup.exe",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.7/Tankhor_1.4.7_x64-setup.exe",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     },
     "darwin-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_x64.dmg",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.7/Tankhor_1.4.7_x64.dmg",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     },
     "darwin-aarch64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.6/Tankhor_1.4.6_aarch64.dmg",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.7/Tankhor_1.4.7_aarch64.dmg",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     }
   }

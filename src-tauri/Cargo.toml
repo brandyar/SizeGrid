@@ -1,6 +1,6 @@
 [package]
 name = "tankhor"
-version = "1.4.6"
+version = "1.4.7"
 description = "Tankhor Garments Inventory and Size Advisor Desktop App"
 authors = ["Tankhor Team <info@tankhor.com>"]
 edition = "2021"

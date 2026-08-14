@@ -184,7 +184,7 @@ class AppUpdateService {
           const update = await tauriModules.updater.checkUpdate();
           if (update?.shouldUpdate) {
             this.activeTauriUpdateHandle = update;
-            const releaseVersion = update.manifest?.version || '1.4.6';
+            const releaseVersion = update.manifest?.version || APP_VERSION;
             const minVer = (update.manifest as any)?.minimum_version || (update.manifest as any)?.minSupportedVersion || '1.0.0';
             const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
 
@@ -345,22 +345,22 @@ class AppUpdateService {
       // Default fallback release object if offline or endpoints unreachable
       if (!remoteRelease) {
         remoteRelease = {
-          version: '1.4.6',
-          releaseDate: '2026-08-13',
-          notes: '• معماری جدید کامپوننت‌های داشبورد و شکستن فایل یکپارچه به زیرکامپوننت‌های ماژولار\n• مدیریت مرکزی حالت‌های داشبورد و ماتریس انبار با Zustand\n• بهبود سرعت رندر، بهینه‌سازی حافظه و کارایی لایه ذخیره‌سازی',
+          version: APP_VERSION,
+          releaseDate: new Date().toISOString().split('T')[0],
+          notes: '• نمایش پویا و خودکار نسخه نرم‌افزار در تمامی هدرهای وب، دسکتاپ و صفحه ورود\n• ارتقا و بهینه‌سازی زیرساخت سنجش و دانلود خودکار بروزرسانی در پس‌زمینه (Background Auto-Updater)',
           changelog: {
             fa: [
-              'شکستن فایل غول‌پیکر Dashboard.tsx به کامپوننت‌های ماژولار',
-              'مدیریت متمرکز و بهینه stateهای انبار و ماتریس ۲ بعدی با Zustand Store',
-              'ارتقای نسخه نرم‌افزار به ۱.۴.۶ جهت سنجش دریافت بروزرسانی خودکار دسکتاپ'
+              'نمایش پویای نسخه و ویجت وضعیت بروزرسانی در هدر سایت و صفحه ورود دسکتاپ',
+              'همگام‌سازی خودکار و داینامیک لینک‌های دانلود فایل‌های نصبی مک (DMG) و ویندوز (EXE)',
+              'بهبود مکانیزم بررسی و دریافت بسته‌های بروزرسانی در پس‌زمینه (Background Auto-Updater)'
             ],
             en: [
-              'Modularized monolithic Dashboard component into smaller components',
-              'Centralized state management for warehouse inventory and 2D matrix using Zustand Store',
-              'Upgraded desktop application version to 1.4.6 to verify automated updates'
+              'Dynamic version and update status widget in site header and desktop login header',
+              'Dynamic synchronization of download links for macOS (DMG) and Windows (EXE)',
+              'Enhanced background update checking and auto-download mechanism'
             ]
           },
-          downloadUrl: 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.6',
+          downloadUrl: `https://github.com/brandyar/SizeGrid/releases/tag/v${APP_VERSION}`,
           minimum_version: '1.0.0',
           isMandatory: false
         };
