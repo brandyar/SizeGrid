@@ -157,6 +157,15 @@ export interface AppVersionInfo {
 
 export type UpdateCheckStatus = 'idle' | 'checking' | 'update_available' | 'up_to_date' | 'downloading' | 'ready_to_install' | 'error';
 
+export interface UpdaterLogEntry {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'success' | 'debug';
+  category: 'tauri-ipc' | 'manifest' | 'network' | 'signature' | 'download' | 'install' | 'env';
+  message: string;
+  details?: any;
+}
+
 export interface UpdateState {
   currentVersion: string;
   status: UpdateCheckStatus;
@@ -165,6 +174,7 @@ export interface UpdateState {
   errorMessage: string | null;
   lastCheckedTime: number | null;
   showStartupModal?: boolean;
+  logs: UpdaterLogEntry[];
 }
 
 export type OrderStatus = 'published' | 'draft' | 'archived' | 'completed' | 'pending' | 'cancelled';

@@ -1,4 +1,4 @@
-import { AppVersionInfo, UpdateState } from './types';
+import { AppVersionInfo, UpdateState, UpdaterLogEntry } from './types';
 import { isDesktopEnv } from './utils/desktop';
 import { APP_VERSION } from './version';
 
@@ -6,30 +6,44 @@ import { APP_VERSION } from './version';
 export const CURRENT_APP_VERSION = APP_VERSION;
 
 const UPDATE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache TTL to avoid GitHub API rate limits
+const MAX_LOGS_COUNT = 150;
 
 // Lazy-loaded Tauri native modules
 let tauriUpdaterModule: typeof import('@tauri-apps/api/updater') | null = null;
 let tauriProcessModule: typeof import('@tauri-apps/api/process') | null = null;
 let tauriAppModule: typeof import('@tauri-apps/api/app') | null = null;
 
-async function getTauriModules() {
+async function getTauriModules(logger?: (level: 'info' | 'warn' | 'error' | 'success' | 'debug', cat: any, msg: string, d?: any) => void) {
   if (typeof window === 'undefined') return null;
   try {
     if (!tauriUpdaterModule) {
-      tauriUpdaterModule = await import('@tauri-apps/api/updater').catch(() => null);
+      tauriUpdaterModule = await import('@tauri-apps/api/updater').catch((err) => {
+        logger?.('warn', 'tauri-ipc', 'Failed to import @tauri-apps/api/updater module', err?.message || err);
+        return null;
+      });
+      if (tauriUpdaterModule) {
+        logger?.('success', 'tauri-ipc', 'Loaded @tauri-apps/api/updater module successfully');
+      }
     }
     if (!tauriProcessModule) {
-      tauriProcessModule = await import('@tauri-apps/api/process').catch(() => null);
+      tauriProcessModule = await import('@tauri-apps/api/process').catch((err) => {
+        logger?.('warn', 'tauri-ipc', 'Failed to import @tauri-apps/api/process module', err?.message || err);
+        return null;
+      });
     }
     if (!tauriAppModule) {
-      tauriAppModule = await import('@tauri-apps/api/app').catch(() => null);
+      tauriAppModule = await import('@tauri-apps/api/app').catch((err) => {
+        logger?.('warn', 'tauri-ipc', 'Failed to import @tauri-apps/api/app module', err?.message || err);
+        return null;
+      });
     }
     return {
       updater: tauriUpdaterModule,
       process: tauriProcessModule,
       app: tauriAppModule,
     };
-  } catch (e) {
+  } catch (e: any) {
+    logger?.('error', 'tauri-ipc', 'Unexpected error importing Tauri native modules', e?.message || e);
     return null;
   }
 }
@@ -43,6 +57,7 @@ class AppUpdateService {
     errorMessage: null,
     lastCheckedTime: null,
     showStartupModal: false,
+    logs: [],
   };
 
   private listeners: Array<(state: UpdateState) => void> = [];
@@ -51,26 +66,146 @@ class AppUpdateService {
   private unlistenUpdaterEvents: (() => void) | null = null;
 
   constructor() {
-    // Load last checked time on initialization & clean legacy fake version overrides
+    // Load last checked time & persisted logs on initialization
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('tankhor_installed_app_version');
       const savedLastCheck = localStorage.getItem('tankhor_last_update_check');
       if (savedLastCheck) {
         this.state.lastCheckedTime = parseInt(savedLastCheck, 10);
       }
+
+      try {
+        const savedLogs = localStorage.getItem('tankhor_updater_logs');
+        if (savedLogs) {
+          const parsed = JSON.parse(savedLogs);
+          if (Array.isArray(parsed)) {
+            this.state.logs = parsed.slice(-50);
+          }
+        }
+      } catch (e) {
+        // ignore log parse errors
+      }
     }
+
+    // Initial system environment diagnostic log
+    const envInfo = this.getEnvironmentDiagnostics();
+    this.addLog('info', 'env', `Initialized Tankhor Updater v${CURRENT_APP_VERSION}`, envInfo);
 
     // Trigger non-blocking automatic update check on application startup
     if (typeof window !== 'undefined' && this.isDesktopOrNativeApp()) {
       setTimeout(() => {
+        this.addLog('info', 'tauri-ipc', 'Triggering startup non-blocking update check');
         this.checkForUpdates(true);
       }, 2000);
 
       // Periodic check every 4 hours
       this.autoCheckTimer = setInterval(() => {
+        this.addLog('info', 'tauri-ipc', 'Triggering periodic scheduled update check (4h interval)');
         this.checkForUpdates(true);
       }, 4 * 60 * 60 * 1000);
     }
+  }
+
+  /**
+   * Diagnostic environment inspector
+   */
+  public getEnvironmentDiagnostics() {
+    if (typeof window === 'undefined') return { isNode: true };
+    const win = window as any;
+    const isDesktop = isDesktopEnv();
+    const tauriKeys = Object.keys(win).filter(k => k.startsWith('__TAURI'));
+    return {
+      userAgent: navigator.userAgent,
+      isDesktopEnv: isDesktop,
+      tauriKeysFound: tauriKeys,
+      protocol: window.location.protocol,
+      origin: window.location.origin,
+      hostname: window.location.hostname,
+      hasActiveTauriHandle: !!this.activeTauriUpdateHandle,
+      currentVersion: this.state.currentVersion,
+    };
+  }
+
+  /**
+   * Append a structured diagnostic log entry
+   */
+  public addLog(
+    level: 'info' | 'warn' | 'error' | 'success' | 'debug',
+    category: 'tauri-ipc' | 'manifest' | 'network' | 'signature' | 'download' | 'install' | 'env',
+    message: string,
+    details?: any
+  ) {
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
+    
+    const entry: UpdaterLogEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      timestamp: timeStr,
+      level,
+      category,
+      message,
+      details: details ? (typeof details === 'object' ? JSON.parse(JSON.stringify(details, Object.getOwnPropertyNames(details))) : details) : undefined,
+    };
+
+    // Keep memory logs within bounds
+    this.state.logs = [...this.state.logs.slice(-(MAX_LOGS_COUNT - 1)), entry];
+
+    // Persist latest 50 logs to localStorage
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('tankhor_updater_logs', JSON.stringify(this.state.logs.slice(-50)));
+      } catch (e) {
+        // localStorage could be full
+      }
+    }
+
+    // Console output with formatted prefix
+    const prefix = `[Tankhor Updater - ${category.toUpperCase()}]`;
+    if (level === 'error') {
+      console.error(prefix, message, details || '');
+    } else if (level === 'warn') {
+      console.warn(prefix, message, details || '');
+    } else {
+      console.log(prefix, message, details || '');
+    }
+
+    this.notifyListeners();
+  }
+
+  public getLogs(): UpdaterLogEntry[] {
+    return [...this.state.logs];
+  }
+
+  public clearLogs(): void {
+    this.state.logs = [];
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('tankhor_updater_logs');
+    }
+    this.addLog('info', 'env', 'Diagnostic logs cleared by user');
+    this.notifyListeners();
+  }
+
+  public getDiagnosticReport(): string {
+    const env = this.getEnvironmentDiagnostics();
+    let report = `=== TANKHOR UPDATER DIAGNOSTIC REPORT ===\n`;
+    report += `Generated at: ${new Date().toISOString()}\n`;
+    report += `App Version: v${this.state.currentVersion}\n`;
+    report += `Status: ${this.state.status}\n`;
+    report += `Download Progress: ${this.state.downloadProgress}%\n`;
+    report += `Active Tauri Handle Present: ${!!this.activeTauriUpdateHandle}\n`;
+    report += `Latest Release Target: ${this.state.latestRelease?.version || 'None'}\n`;
+    report += `Download Target URL: ${this.state.latestRelease?.downloadUrl || 'None'}\n`;
+    report += `Last Error: ${this.state.errorMessage || 'None'}\n\n`;
+    report += `--- ENVIRONMENT ---\n`;
+    report += JSON.stringify(env, null, 2) + `\n\n`;
+    report += `--- LOG ENTRIES (${this.state.logs.length}) ---\n`;
+    this.state.logs.forEach(l => {
+      report += `[${l.timestamp}] [${l.level.toUpperCase()}] [${l.category.toUpperCase()}] ${l.message}\n`;
+      if (l.details) {
+        report += `  Details: ${typeof l.details === 'string' ? l.details : JSON.stringify(l.details)}\n`;
+      }
+    });
+    return report;
   }
 
   public getState(): UpdateState {
@@ -134,6 +269,8 @@ class AppUpdateService {
    * @param forceRefresh Whether to bypass local TTL cache and query remote servers directly
    */
   public async checkForUpdates(isStartupCheck = false, forceRefresh = false): Promise<UpdateState> {
+    this.addLog('info', 'network', `checkForUpdates started (forceRefresh=${forceRefresh}, isStartupCheck=${isStartupCheck})`);
+
     // Return cached result if checked within TTL window and not forcing refresh
     if (!forceRefresh && typeof localStorage !== 'undefined') {
       const savedLastCheck = localStorage.getItem('tankhor_last_update_check');
@@ -150,6 +287,7 @@ class AppUpdateService {
             if (isStartupCheck && (hasNewVersion || cachedRelease.isMandatory)) {
               this.state.showStartupModal = true;
             }
+            this.addLog('info', 'manifest', `Using cached update release v${cachedRelease.version} (checked ${Math.round((Date.now() - lastCheckTs) / 1000)}s ago)`);
             this.notifyListeners();
             return this.getState();
           } catch (e) {
@@ -164,7 +302,7 @@ class AppUpdateService {
     this.notifyListeners();
 
     try {
-      const tauriModules = await getTauriModules();
+      const tauriModules = await getTauriModules((lvl, cat, msg, d) => this.addLog(lvl, cat, msg, d));
 
       // 1. Query native app version from Tauri IPC bridge if available
       if (this.isTauriDesktop() && tauriModules?.app) {
@@ -172,16 +310,20 @@ class AppUpdateService {
           const nativeVersion = await tauriModules.app.getVersion();
           if (nativeVersion && typeof nativeVersion === 'string') {
             this.state.currentVersion = nativeVersion.trim();
+            this.addLog('info', 'tauri-ipc', `Retrieved native binary version via Tauri IPC: v${this.state.currentVersion}`);
           }
-        } catch (verErr) {
-          console.warn('Native Tauri getVersion query warning:', verErr);
+        } catch (verErr: any) {
+          this.addLog('warn', 'tauri-ipc', `Native Tauri getVersion query warning: ${verErr?.message || verErr}`, verErr);
         }
       }
 
       // 2. Query official Tauri Updater native bridge first
       if (this.isTauriDesktop() && tauriModules?.updater) {
         try {
+          this.addLog('info', 'tauri-ipc', 'Invoking Tauri native updater IPC: checkUpdate()...');
           const update = await tauriModules.updater.checkUpdate();
+          this.addLog('debug', 'tauri-ipc', 'Tauri checkUpdate() returned result', update);
+
           if (update?.shouldUpdate) {
             this.activeTauriUpdateHandle = update;
             const releaseVersion = update.manifest?.version || APP_VERSION;
@@ -209,12 +351,25 @@ class AppUpdateService {
             if (typeof localStorage !== 'undefined') {
               localStorage.setItem('tankhor_last_update_check', this.state.lastCheckedTime.toString());
             }
+
+            this.addLog('success', 'tauri-ipc', `Native Tauri updater confirmed new update v${releaseVersion} is available and verified!`, {
+              manifest: update.manifest,
+              shouldUpdate: update.shouldUpdate,
+            });
+
             this.notifyListeners();
             return this.getState();
+          } else {
+            this.addLog('info', 'tauri-ipc', 'Tauri native updater reported shouldUpdate: false (No native package update signaled by endpoints).');
           }
-        } catch (tauriErr) {
-          console.warn('Tauri native updater check failed, falling back to HTTP endpoints:', tauriErr);
+        } catch (tauriErr: any) {
+          this.addLog('warn', 'tauri-ipc', `Tauri native updater check threw an error: ${tauriErr?.message || tauriErr}. Will check HTTP endpoints as fallback.`, {
+            error: tauriErr?.message || String(tauriErr),
+            stack: tauriErr?.stack,
+          });
         }
+      } else {
+        this.addLog('info', 'tauri-ipc', `Native Tauri updater not engaged (isDesktop=${this.isTauriDesktop()}, updaterLoaded=${!!tauriModules?.updater})`);
       }
 
       // 3. Query Official GitHub Releases API & HTTP Manifest Candidates
@@ -222,10 +377,13 @@ class AppUpdateService {
 
       // 3A. Direct query to GitHub Releases API for brandyar/SizeGrid
       try {
+        this.addLog('info', 'network', 'Querying GitHub Releases API (api.github.com/repos/brandyar/SizeGrid/releases/latest)...');
         const ghRes = await fetch('https://api.github.com/repos/brandyar/SizeGrid/releases/latest', {
           headers: { 'Accept': 'application/vnd.github.v3+json' },
           cache: 'no-store'
         });
+        this.addLog('debug', 'network', `GitHub Releases API response HTTP status: ${ghRes.status}`);
+
         if (ghRes.ok) {
           const ghData = await ghRes.json();
           if (ghData && ghData.tag_name) {
@@ -256,10 +414,15 @@ class AppUpdateService {
               minimum_version: '1.0.0',
               isMandatory: false
             };
+
+            this.addLog('success', 'network', `Found GitHub release tag: v${cleanVer}`, {
+              downloadUrl,
+              assetsCount: ghData.assets?.length || 0,
+            });
           }
         }
-      } catch (ghErr) {
-        console.warn('GitHub Releases API query failed, falling back to raw manifests:', ghErr);
+      } catch (ghErr: any) {
+        this.addLog('warn', 'network', `GitHub Releases API query failed: ${ghErr?.message || ghErr}`, ghErr);
       }
 
       // 3B. Query Raw Manifest Endpoints if GitHub Releases API didn't return or was rate-limited
@@ -293,6 +456,7 @@ class AppUpdateService {
           try {
             const sep = baseUrl.includes('?') ? '&' : '?';
             const cacheBusterUrl = `${baseUrl}${sep}_t=${Date.now()}`;
+            this.addLog('debug', 'manifest', `Checking manifest endpoint: ${baseUrl}`);
             const res = await fetch(cacheBusterUrl, { 
               cache: 'no-store',
               headers: {
@@ -329,21 +493,23 @@ class AppUpdateService {
                     fa: faChangelog,
                     en: enChangelog
                   },
-                  downloadUrl: data.url || data.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.3',
+                  downloadUrl: data.url || data.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/tag/v1.4.7',
                   minimum_version: minVer,
                   isMandatory
                 };
+                this.addLog('success', 'manifest', `Successfully parsed version manifest from ${baseUrl} (v${data.version})`);
                 break;
               }
             }
-          } catch (fetchErr) {
-            console.warn(`Could not fetch update manifest from ${baseUrl}:`, fetchErr);
+          } catch (fetchErr: any) {
+            this.addLog('debug', 'manifest', `Endpoint unreachable: ${baseUrl} (${fetchErr?.message || fetchErr})`);
           }
         }
       }
 
       // Default fallback release object if offline or endpoints unreachable
       if (!remoteRelease) {
+        this.addLog('warn', 'manifest', 'All remote endpoints unreachable; applying built-in fallback release object');
         remoteRelease = {
           version: APP_VERSION,
           releaseDate: new Date().toISOString().split('T')[0],
@@ -367,6 +533,7 @@ class AppUpdateService {
       }
 
       const hasNewVersion = this.compareVersions(this.state.currentVersion, remoteRelease.version) > 0;
+      this.addLog('info', 'manifest', `Version evaluation: Current=v${this.state.currentVersion} vs Remote=v${remoteRelease.version} -> HasNewVersion=${hasNewVersion}`);
 
       this.state.lastCheckedTime = Date.now();
       if (typeof localStorage !== 'undefined') {
@@ -391,7 +558,7 @@ class AppUpdateService {
       return this.getState();
 
     } catch (err: any) {
-      console.error('Check for updates failed:', err);
+      this.addLog('error', 'network', `Check for updates failed: ${err?.message || err}`, err);
       this.state.status = 'error';
       this.state.errorMessage = err?.message || 'برقراری ارتباط با سرور بروزرسانی برقرار نشد. لطفاً اتصال اینترنت را بررسی کنید.';
       this.notifyListeners();
@@ -405,28 +572,34 @@ class AppUpdateService {
   public async relaunchApp(): Promise<void> {
     if (typeof window === 'undefined') return;
 
+    this.addLog('info', 'install', 'Initiating application relaunch...');
+
     if (this.isTauriDesktop()) {
       try {
-        const tauriModules = await getTauriModules();
+        const tauriModules = await getTauriModules((lvl, cat, msg, d) => this.addLog(lvl, cat, msg, d));
         if (tauriModules?.process?.relaunch) {
+          this.addLog('info', 'tauri-ipc', 'Invoking tauriModules.process.relaunch()');
           await tauriModules.process.relaunch();
           return;
         }
         const tauriWindow = window as any;
         if (tauriWindow.__TAURI__?.process?.relaunch) {
+          this.addLog('info', 'tauri-ipc', 'Invoking window.__TAURI__.process.relaunch()');
           await tauriWindow.__TAURI__.process.relaunch();
           return;
         }
         if (tauriWindow.__TAURI__?.relaunch) {
+          this.addLog('info', 'tauri-ipc', 'Invoking window.__TAURI__.relaunch()');
           await tauriWindow.__TAURI__.relaunch();
           return;
         }
-      } catch (rErr) {
-        console.warn('Native Tauri relaunch failed, reloading location:', rErr);
+      } catch (rErr: any) {
+        this.addLog('warn', 'tauri-ipc', `Native Tauri relaunch failed: ${rErr?.message || rErr}`, rErr);
       }
     }
 
     // Web browser fallback
+    this.addLog('info', 'install', 'Reloading browser window as fallback...');
     window.location.reload();
   }
 
@@ -434,7 +607,15 @@ class AppUpdateService {
    * Download and install the available update in the background
    */
   public async downloadAndInstallUpdate(): Promise<void> {
-    if (!this.state.latestRelease) return;
+    if (!this.state.latestRelease) {
+      this.addLog('warn', 'download', 'Cannot download update: latestRelease is null');
+      return;
+    }
+
+    this.addLog('info', 'download', `Initiating download and installation for v${this.state.latestRelease.version}...`, {
+      isDesktop: this.isTauriDesktop(),
+      hasHandle: !!this.activeTauriUpdateHandle,
+    });
 
     this.state.status = 'downloading';
     this.state.downloadProgress = 10;
@@ -442,7 +623,7 @@ class AppUpdateService {
     this.notifyListeners();
 
     try {
-      const tauriModules = await getTauriModules();
+      const tauriModules = await getTauriModules((lvl, cat, msg, d) => this.addLog(lvl, cat, msg, d));
       let installedViaNativeUpdater = false;
 
       if (this.isTauriDesktop()) {
@@ -453,8 +634,11 @@ class AppUpdateService {
               this.unlistenUpdaterEvents();
               this.unlistenUpdaterEvents = null;
             }
+            this.addLog('info', 'tauri-ipc', 'Registering native updater event listener onUpdaterEvent()...');
             this.unlistenUpdaterEvents = await tauriModules.updater.onUpdaterEvent((statusEvent: any) => {
-              const statusStr = String(statusEvent?.status || '');
+              const statusStr = String(statusEvent?.status || statusEvent || '');
+              this.addLog('info', 'tauri-ipc', `Native updater event received: ${statusStr}`, statusEvent);
+
               if (statusStr === 'PENDING') {
                 this.state.status = 'downloading';
                 this.state.downloadProgress = 20;
@@ -466,27 +650,49 @@ class AppUpdateService {
               } else if (statusStr === 'DOWNLOADED') {
                 this.state.status = 'ready_to_install';
                 this.state.downloadProgress = 100;
+                this.addLog('success', 'download', 'Native update binary downloaded and verified by Tauri!');
                 this.notifyListeners();
               } else if (statusStr === 'DONE') {
                 this.state.status = 'ready_to_install';
                 this.state.downloadProgress = 100;
+                this.addLog('success', 'install', 'Native update binary installation finished (DONE)');
                 this.notifyListeners();
               } else if (statusStr === 'ERROR') {
                 this.state.status = 'error';
-                this.state.errorMessage = statusEvent?.error || 'خطا در دانلود خودکار فایل';
+                const errDetail = statusEvent?.error || 'خطا در دانلود خودکار فایل';
+                this.state.errorMessage = errDetail;
+                this.addLog('error', 'tauri-ipc', `Native updater event reported error: ${errDetail}`, statusEvent);
                 this.notifyListeners();
               }
             });
-          } catch (listenerErr) {
-            console.warn('Could not register onUpdaterEvent listener:', listenerErr);
+          } catch (listenerErr: any) {
+            this.addLog('warn', 'tauri-ipc', `Could not register onUpdaterEvent listener: ${listenerErr?.message || listenerErr}`, listenerErr);
           }
         }
 
-        // B. If active Tauri update handle exists from native check()
+        // B. If active Tauri update handle is missing, try a quick checkUpdate() to acquire handle now
+        if (!this.activeTauriUpdateHandle && tauriModules?.updater?.checkUpdate) {
+          try {
+            this.addLog('info', 'tauri-ipc', 'Active Tauri update handle is missing. Attempting checkUpdate() to acquire fresh update handle...');
+            const freshUpdate = await tauriModules.updater.checkUpdate();
+            if (freshUpdate?.shouldUpdate) {
+              this.activeTauriUpdateHandle = freshUpdate;
+              this.addLog('success', 'tauri-ipc', 'Acquired fresh native update handle from Tauri updater successfully!');
+            } else {
+              this.addLog('warn', 'tauri-ipc', 'Fresh checkUpdate() returned shouldUpdate=false or null handle');
+            }
+          } catch (freshErr: any) {
+            this.addLog('warn', 'tauri-ipc', `checkUpdate() on-the-fly acquisition failed: ${freshErr?.message || freshErr}`, freshErr);
+          }
+        }
+
+        // C. If active Tauri update handle exists from native check()
         if (this.activeTauriUpdateHandle) {
           try {
+            this.addLog('info', 'download', 'Found active native update handle. Calling downloadAndInstall()...');
             if (typeof this.activeTauriUpdateHandle.downloadAndInstall === 'function') {
               await this.activeTauriUpdateHandle.downloadAndInstall((event: any) => {
+                this.addLog('debug', 'download', 'Download progress chunk received', event);
                 if (event?.event === 'Progress' && event?.data?.chunkLength) {
                   this.state.downloadProgress = Math.min(95, this.state.downloadProgress + 10);
                   this.notifyListeners();
@@ -496,34 +702,44 @@ class AppUpdateService {
                 }
               });
               installedViaNativeUpdater = true;
+              this.addLog('success', 'install', 'activeTauriUpdateHandle.downloadAndInstall() completed successfully!');
             } else if (typeof this.activeTauriUpdateHandle.download === 'function') {
+              this.addLog('info', 'download', 'Calling activeTauriUpdateHandle.download()...');
               await this.activeTauriUpdateHandle.download((progress: number) => {
                 this.state.downloadProgress = progress || 50;
                 this.notifyListeners();
               });
               if (typeof this.activeTauriUpdateHandle.install === 'function') {
+                this.addLog('info', 'install', 'Calling activeTauriUpdateHandle.install()...');
                 await this.activeTauriUpdateHandle.install();
                 installedViaNativeUpdater = true;
+                this.addLog('success', 'install', 'activeTauriUpdateHandle.install() completed successfully!');
               }
             }
           } catch (tErr: any) {
-            console.warn('Native update handle error:', tErr);
+            this.addLog('error', 'tauri-ipc', `Native update handle download/install execution error: ${tErr?.message || tErr}`, {
+              error: tErr?.message || String(tErr),
+              stack: tErr?.stack,
+            });
           }
         }
 
-        // C. Global updater installUpdate() fallback
+        // D. Global updater installUpdate() fallback
         if (!installedViaNativeUpdater && tauriModules?.updater?.installUpdate) {
           try {
+            this.addLog('info', 'tauri-ipc', 'Attempting global tauriModules.updater.installUpdate() fallback...');
             await tauriModules.updater.installUpdate();
             installedViaNativeUpdater = true;
-          } catch (upErr) {
-            console.warn('Global Tauri installUpdate failed:', upErr);
+            this.addLog('success', 'install', 'Global tauriModules.updater.installUpdate() succeeded!');
+          } catch (upErr: any) {
+            this.addLog('warn', 'tauri-ipc', `Global Tauri installUpdate failed: ${upErr?.message || upErr}`, upErr);
           }
         }
 
         if (installedViaNativeUpdater) {
           this.state.downloadProgress = 100;
           this.state.status = 'ready_to_install';
+          this.addLog('success', 'install', 'Background update completed successfully! Scheduling auto-relaunch in 1.5s...');
           this.notifyListeners();
 
           // Auto relaunch after 1.5 seconds or let user click restart button
@@ -534,16 +750,25 @@ class AppUpdateService {
         }
       }
 
-      // D. Fallback for Web browser / environments without native updater
-      const targetUrl = this.state.latestRelease.downloadUrl || 'https://github.com/brandyar/SizeGrid/releases/latest';
+      // E. Fallback for Web browser or environments where native updater was skipped/failed
+      const targetUrl = this.state.latestRelease.downloadUrl || `https://github.com/brandyar/SizeGrid/releases/tag/v${this.state.latestRelease.version}`;
+      this.addLog('warn', 'download', `Background native update could not proceed (Native handle unavailable or verification failed). Fallback: Opening direct release/download URL in browser: ${targetUrl}`, {
+        isTauriDesktop: this.isTauriDesktop(),
+        hasTauriModules: !!tauriModules?.updater,
+        hasUpdateHandle: !!this.activeTauriUpdateHandle,
+      });
+
       const tauriWindow = typeof window !== 'undefined' ? (window as any) : null;
 
       if (tauriWindow) {
         if (tauriWindow.__TAURI__?.shell?.open) {
+          this.addLog('info', 'tauri-ipc', 'Opening download URL via window.__TAURI__.shell.open');
           await tauriWindow.__TAURI__.shell.open(targetUrl);
         } else if (tauriWindow.__TAURI_PLUGIN_SHELL__?.open) {
+          this.addLog('info', 'tauri-ipc', 'Opening download URL via window.__TAURI_PLUGIN_SHELL__.open');
           await tauriWindow.__TAURI_PLUGIN_SHELL__.open(targetUrl);
         } else if (typeof window !== 'undefined') {
+          this.addLog('info', 'env', 'Opening download URL via window.open');
           window.open(targetUrl, '_blank');
         }
       } else if (typeof window !== 'undefined') {
@@ -552,11 +777,11 @@ class AppUpdateService {
 
       this.state.downloadProgress = 100;
       this.state.status = 'update_available';
-      this.state.errorMessage = 'دانلود مستقیم فایل نصب جدید (DMG/EXE) آغاز شد. لطفاً پس از پایان دانلود، فایل را نصب نمایید.';
+      this.state.errorMessage = 'دانلود فایل نصب جدید (DMG/EXE) آغاز شد. پس از پایان دانلود، فایل را جهت نصب اجرا نمایید (به دلیل عدم تایید امضای بومی Minisign یا نبود هندل نیتیو، آپدیت در پس‌زمینه انجام نشد).';
       this.notifyListeners();
 
     } catch (err: any) {
-      console.error('Download update failed:', err);
+      this.addLog('error', 'download', `Download update fatal exception: ${err?.message || err}`, err);
       this.state.status = 'error';
       this.state.errorMessage = err?.message || 'خطا در دریافت فایل بروزرسانی. لطفاً مستقیم از گیتهاب دریافت نمایید.';
       this.notifyListeners();
@@ -565,3 +790,4 @@ class AppUpdateService {
 }
 
 export const updateService = new AppUpdateService();
+

@@ -28,6 +28,14 @@ export function useUpdater() {
     updateService.dismissStartupModal();
   };
 
+  const clearLogs = () => {
+    updateService.clearLogs();
+  };
+
+  const getDiagnosticReport = () => {
+    return updateService.getDiagnosticReport();
+  };
+
   return {
     currentVersion: updateState.currentVersion,
     latestVersion: updateState.latestRelease?.version || null,
@@ -42,10 +50,13 @@ export function useUpdater() {
     notes: updateState.latestRelease?.notes || null,
     lastCheckedTime: updateState.lastCheckedTime,
     showStartupModal: updateState.showStartupModal || false,
+    logs: updateState.logs || [],
     updateState,
     checkForUpdates,
     downloadAndInstall,
     restartAndInstall,
     dismissModal,
+    clearLogs,
+    getDiagnosticReport,
   };
 }
