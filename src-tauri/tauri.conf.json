@@ -34,7 +34,7 @@
           "https://tankhor.com/latest.json"
         ],
       },
-    }
+    },
     "bundle": {
       "active": true,
       "targets": "all",
