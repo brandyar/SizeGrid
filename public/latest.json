@@ -2,21 +2,21 @@
   "version": "1.4.9",
   "notes": "• ذخیره‌سازی نیتیو و بلادرنگ کلیه داده‌ها در دیتابیس بومی دسکتاپ (SQLite)\n• همگام‌سازی و انتقال کامل و خودکار اطلاعات آنلاین به دیتابیس آفلاین محلی در زمان آنلاین شدن یا ورود به حساب\n• بهینه‌سازی و ساده‌سازی رابط کاربری صفحه ورود دسکتاپ",
   "pub_date": "2026-08-14T10:00:00Z",
-  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y=",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWYyeUVPekdUZW1GZlFlME9WZ2R1L1ExQ25DaVJMZHNOOHNteHBDbXpkWjh0cTFLMDNKR3RaQjZGMDNOelF3dFJRK2JZWWIwM3RrWWVFemk1NmxjU3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg4MTk2CWZpbGU6VGFua2hvcl8xLjQuOV94NjQtc2V0dXAubnNpcy56aXAKaGpFNHRIZ2Fvb2ZUNTJsT2JzelR0dUFhR2F2TEwyVXVWUmxrQUE2U3Z6a3Z1Si9wWmkyM1J2U2pibzJFWHpGSDFJczMycmQ3VStRVnRjNUpFckQxQWc9PQo=",
   "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.8/Tankhor_1.4.8_x64-setup.exe",
   "minimum_version": "1.0.0",
   "platforms": {
     "windows-x86_64": {
       "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWYyeUVPekdUZW1GZlFlME9WZ2R1L1ExQ25DaVJMZHNOOHNteHBDbXpkWjh0cTFLMDNKR3RaQjZGMDNOelF3dFJRK2JZWWIwM3RrWWVFemk1NmxjU3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg4MTk2CWZpbGU6VGFua2hvcl8xLjQuOV94NjQtc2V0dXAubnNpcy56aXAKaGpFNHRIZ2Fvb2ZUNTJsT2JzelR0dUFhR2F2TEwyVXVWUmxrQUE2U3Z6a3Z1Si9wWmkyM1J2U2pibzJFWHpGSDFJczMycmQ3VStRVnRjNUpFckQxQWc9PQo="
     },
     "darwin-x86_64": {
       "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64.dmg",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWYyeUVPekdUZW1GZlFlME9WZ2R1L1ExQ25DaVJMZHNOOHNteHBDbXpkWjh0cTFLMDNKR3RaQjZGMDNOelF3dFJRK2JZWWIwM3RrWWVFemk1NmxjU3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg4MTk2CWZpbGU6VGFua2hvcl8xLjQuOV94NjQtc2V0dXAubnNpcy56aXAKaGpFNHRIZ2Fvb2ZUNTJsT2JzelR0dUFhR2F2TEwyVXVWUmxrQUE2U3Z6a3Z1Si9wWmkyM1J2U2pibzJFWHpGSDFJczMycmQ3VStRVnRjNUpFckQxQWc9PQo="
     },
     "darwin-aarch64": {
       "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_aarch64.dmg",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWYyeUVPekdUZW1GZlFlME9WZ2R1L1ExQ25DaVJMZHNOOHNteHBDbXpkWjh0cTFLMDNKR3RaQjZGMDNOelF3dFJRK2JZWWIwM3RrWWVFemk1NmxjU3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg4MTk2CWZpbGU6VGFua2hvcl8xLjQuOV94NjQtc2V0dXAubnNpcy56aXAKaGpFNHRIZ2Fvb2ZUNTJsT2JzelR0dUFhR2F2TEwyVXVWUmxrQUE2U3Z6a3Z1Si9wWmkyM1J2U2pibzJFWHpGSDFJczMycmQ3VStRVnRjNUpFckQxQWc9PQo="
     }
   }
 }
