@@ -1,10 +1,11 @@
 import { LocalStorageAdapter } from './localAdapter';
 import { SQLiteStorageAdapter } from './sqliteAdapter';
 import { DirectusCloudAdapter } from './cloudAdapter';
-import { IStorageAdapter, StorageMode, SyncStats, SyncQueueItem } from './types';
+import { IStorageAdapter, StorageMode, SyncStats, SyncQueueItem, LocalBackupPayload } from './types';
 import { Product, Category, Size, Color, SizeGuideTemplate, InventoryItem, ClothingTypeSlug, DiffSyncPayload, Order, CreateOrderInput, OrderStatus } from '../types';
 import { DirectusAPI } from '../directus';
 import { isDesktopEnv } from '../utils/desktop';
+import { APP_VERSION } from '../version';
 
 export class StorageSyncManager implements IStorageAdapter {
   private localAdapter: SQLiteStorageAdapter;
@@ -560,6 +561,11 @@ export class StorageSyncManager implements IStorageAdapter {
     return this.localAdapter.getPendingSyncQueue();
   }
 
+  removeSyncQueueItem(id: string): void {
+    this.localAdapter.removeSyncQueueItem(id);
+    this.notifyListeners();
+  }
+
   clearPendingSyncQueue(): void {
     this.localAdapter.clearPendingSyncQueue();
     this.notifyListeners();
@@ -574,6 +580,185 @@ export class StorageSyncManager implements IStorageAdapter {
       lastSyncTime: localStats.lastSyncTime,
       syncInProgress: this.syncInProgress,
       lastError: this.lastError
+    };
+  }
+
+  // --- LOCAL BACKUP & RESTORE UTILITIES ---
+  async exportLocalBackup(): Promise<LocalBackupPayload> {
+    const [products, categories, sizes, colors, templates, inventory, orders] = await Promise.all([
+      this.localAdapter.getProducts(),
+      this.localAdapter.getCategories(),
+      this.localAdapter.getSizes(),
+      this.localAdapter.getColors(),
+      this.localAdapter.getSizeGuideTemplates(),
+      this.localAdapter.getInventory(),
+      this.localAdapter.getOrders()
+    ]);
+    const syncQueue = this.localAdapter.getPendingSyncQueue();
+    const currentUser = DirectusAPI.getCurrentUser();
+
+    return {
+      app: 'Tankhor',
+      version: APP_VERSION,
+      timestamp: new Date().toISOString(),
+      exportedAt: Date.now(),
+      data: {
+        products,
+        categories,
+        sizes,
+        colors,
+        templates,
+        inventory,
+        orders,
+        syncQueue,
+        shopName: currentUser?.shop_name,
+        shopSlug: currentUser?.shop_slug
+      }
+    };
+  }
+
+  async importLocalBackup(
+    backup: LocalBackupPayload,
+    mode: 'overwrite' | 'merge' = 'overwrite'
+  ): Promise<{ success: boolean; message: string; counts: { products: number; inventory: number; orders: number } }> {
+    if (!backup || !backup.data) {
+      throw new Error('فایل پشتیبان نامعتبر است یا ساختار داده‌های آن صحیح نیست.');
+    }
+
+    const {
+      products = [],
+      categories = [],
+      sizes = [],
+      colors = [],
+      templates = [],
+      inventory = [],
+      orders = [],
+      syncQueue = []
+    } = backup.data;
+
+    if (mode === 'overwrite') {
+      if ((this.localAdapter as any).persistFullCloudDataset) {
+        await (this.localAdapter as any).persistFullCloudDataset({
+          products,
+          categories,
+          sizes,
+          colors,
+          templates,
+          inventory,
+          orders
+        });
+      } else {
+        this.localAdapter.setProductsCache(products);
+        this.localAdapter.setCategoriesCache(categories);
+        this.localAdapter.setSizesCache(sizes);
+        this.localAdapter.setColorsCache(colors);
+        this.localAdapter.setTemplatesCache(templates);
+        this.localAdapter.setInventoryCache(inventory);
+        this.localAdapter.setOrdersCache(orders);
+      }
+      if (Array.isArray(syncQueue)) {
+        localStorage.setItem('tankhor_local_sync_queue_v1', JSON.stringify(syncQueue));
+      }
+    } else {
+      // Merge mode
+      const [
+        existingProds,
+        existingCats,
+        existingSizes,
+        existingColors,
+        existingTpls,
+        existingInv,
+        existingOrders
+      ] = await Promise.all([
+        this.localAdapter.getProducts(),
+        this.localAdapter.getCategories(),
+        this.localAdapter.getSizes(),
+        this.localAdapter.getColors(),
+        this.localAdapter.getSizeGuideTemplates(),
+        this.localAdapter.getInventory(),
+        this.localAdapter.getOrders()
+      ]);
+
+      const mergedProds = [...existingProds];
+      for (const p of products) {
+        if (!mergedProds.some(e => e.id === p.id || (p.local_uuid && e.local_uuid === p.local_uuid))) {
+          mergedProds.push(p);
+        }
+      }
+
+      const mergedCats = [...existingCats];
+      for (const c of categories) {
+        if (!mergedCats.some(e => e.id === c.id || e.name === c.name)) {
+          mergedCats.push(c);
+        }
+      }
+
+      const mergedSizes = [...existingSizes];
+      for (const s of sizes) {
+        if (!mergedSizes.some(e => e.id === s.id || e.name === s.name)) {
+          mergedSizes.push(s);
+        }
+      }
+
+      const mergedColors = [...existingColors];
+      for (const col of colors) {
+        if (!mergedColors.some(e => e.id === col.id || e.name_fa === col.name_fa)) {
+          mergedColors.push(col);
+        }
+      }
+
+      const mergedTpls = [...existingTpls];
+      for (const t of templates) {
+        if (!mergedTpls.some(e => e.id === t.id || e.name === t.name)) {
+          mergedTpls.push(t);
+        }
+      }
+
+      const mergedInv = [...existingInv];
+      for (const inv of inventory) {
+        if (!mergedInv.some(e => e.id === inv.id)) {
+          mergedInv.push(inv);
+        }
+      }
+
+      const mergedOrders = [...existingOrders];
+      for (const ord of orders) {
+        if (!mergedOrders.some(e => e.id === ord.id)) {
+          mergedOrders.push(ord);
+        }
+      }
+
+      if ((this.localAdapter as any).persistFullCloudDataset) {
+        await (this.localAdapter as any).persistFullCloudDataset({
+          products: mergedProds,
+          categories: mergedCats,
+          sizes: mergedSizes,
+          colors: mergedColors,
+          templates: mergedTpls,
+          inventory: mergedInv,
+          orders: mergedOrders
+        });
+      } else {
+        this.localAdapter.setProductsCache(mergedProds);
+        this.localAdapter.setCategoriesCache(mergedCats);
+        this.localAdapter.setSizesCache(mergedSizes);
+        this.localAdapter.setColorsCache(mergedColors);
+        this.localAdapter.setTemplatesCache(mergedTpls);
+        this.localAdapter.setInventoryCache(mergedInv);
+        this.localAdapter.setOrdersCache(mergedOrders);
+      }
+    }
+
+    this.notifyListeners();
+
+    return {
+      success: true,
+      message: 'داده‌های پشتیبان با موفقیت بازگردانی شدند.',
+      counts: {
+        products: products.length,
+        inventory: inventory.length,
+        orders: orders.length
+      }
     };
   }
 }

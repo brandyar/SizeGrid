@@ -1,5 +1,5 @@
 {
-  "version": "1.4.8",
+  "version": "1.4.9",
   "notes": "• ذخیره‌سازی نیتیو و بلادرنگ کلیه داده‌ها در دیتابیس بومی دسکتاپ (SQLite)\n• همگام‌سازی و انتقال کامل و خودکار اطلاعات آنلاین به دیتابیس آفلاین محلی در زمان آنلاین شدن یا ورود به حساب\n• بهینه‌سازی و ساده‌سازی رابط کاربری صفحه ورود دسکتاپ",
   "pub_date": "2026-08-14T10:00:00Z",
   "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y=",
@@ -7,15 +7,15 @@
   "minimum_version": "1.0.0",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.8/Tankhor_1.4.8_x64-setup.exe",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64-setup.exe",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     },
     "darwin-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.8/Tankhor_1.4.8_x64.dmg",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64.dmg",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     },
     "darwin-aarch64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.8/Tankhor_1.4.8_aarch64.dmg",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_aarch64.dmg",
       "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlRSOHMvaU5uTWtrcmlPbmFzT1F3UkF5Y280M0NMbHZwTnhldDZhVHFMTE5JNWszRXZ5UDR3T2Y="
     }
   }

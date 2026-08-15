@@ -2,6 +2,7 @@ import { AuthService } from './auth.service';
 import { InventoryService } from './inventory.service';
 import { ProductService } from './product.service';
 import { OrderService } from './order.service';
+import { getDirectusUrl, directusFetch } from './client';
 
 export * from './client';
 export * from './auth.service';
@@ -200,6 +201,49 @@ export class DirectusService {
 
   deleteOrder(id: number) {
     return this.order.deleteOrder(id);
+  }
+
+  // --- HEALTH & PING TEST ---
+  async testConnection(): Promise<{ ok: boolean; latencyMs: number; url: string; message: string }> {
+    const url = getDirectusUrl();
+    const start = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    try {
+      const res = await directusFetch('/server/ping', { retries: 0 }).catch(() => null);
+      let ok = false;
+      if (res && res.ok) {
+        ok = true;
+      } else {
+        const catRes = await directusFetch('/items/categories?limit=1', { retries: 0 }).catch(() => null);
+        if (catRes && (catRes.ok || catRes.status === 401 || catRes.status === 403)) {
+          ok = true;
+        }
+      }
+      const end = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const latencyMs = Math.round(end - start);
+
+      if (ok) {
+        return {
+          ok: true,
+          latencyMs,
+          url,
+          message: `ارتباط با سرور ابری برقرار است (${latencyMs} میلی‌ثانیه)`
+        };
+      } else {
+        return {
+          ok: false,
+          latencyMs: 0,
+          url,
+          message: 'عدم پاسخگویی سرور ابری. لطفاً اتصال اینترنت خود را بررسی کنید.'
+        };
+      }
+    } catch (err: any) {
+      return {
+        ok: false,
+        latencyMs: 0,
+        url,
+        message: err?.message || 'خطا در برقراری ارتباط با سرور ابری'
+      };
+    }
   }
 }
 

@@ -2859,7 +2859,6 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
               {/* TAB 2: GENERAL WAREHOUSE MANAGER (انبار) */}
               {activeTab === 'warehouse' && (
                 <WarehouseTable
-                  t={t}
                   isRtl={isRtl}
                   darkMode={darkMode}
                   warehouseSearch={warehouseSearch}

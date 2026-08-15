@@ -64,7 +64,27 @@ export interface IStorageAdapter {
 
   // Sync Operations
   getPendingSyncQueue(): SyncQueueItem[];
+  removeSyncQueueItem(id: string): void;
   clearPendingSyncQueue(): void;
   getSyncStats(): SyncStats;
+}
+
+export interface LocalBackupPayload {
+  app: string;
+  version: string;
+  timestamp: string;
+  exportedAt: number;
+  data: {
+    products: Product[];
+    categories: Category[];
+    sizes: Size[];
+    colors: Color[];
+    templates: SizeGuideTemplate[];
+    inventory: InventoryItem[];
+    orders: Order[];
+    syncQueue: SyncQueueItem[];
+    shopName?: string;
+    shopSlug?: string;
+  };
 }
 

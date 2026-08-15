@@ -418,6 +418,10 @@ export class DirectusCloudAdapter implements IStorageAdapter {
     return this.localFallback.getPendingSyncQueue();
   }
 
+  removeSyncQueueItem(id: string): void {
+    this.localFallback.removeSyncQueueItem(id);
+  }
+
   clearPendingSyncQueue(): void {
     this.localFallback.clearPendingSyncQueue();
   }

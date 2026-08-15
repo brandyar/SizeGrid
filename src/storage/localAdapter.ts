@@ -653,6 +653,12 @@ export class LocalStorageAdapter implements IStorageAdapter {
     return this.getItem<SyncQueueItem[]>(STORAGE_KEYS.SYNC_QUEUE, []);
   }
 
+  removeSyncQueueItem(id: string): void {
+    const queue = this.getItem<SyncQueueItem[]>(STORAGE_KEYS.SYNC_QUEUE, []);
+    const updated = queue.filter(item => item.id !== id);
+    this.setItem(STORAGE_KEYS.SYNC_QUEUE, updated);
+  }
+
   clearPendingSyncQueue(): void {
     this.setItem(STORAGE_KEYS.SYNC_QUEUE, []);
   }
