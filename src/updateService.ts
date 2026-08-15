@@ -17,25 +17,39 @@ async function getTauriModules(logger?: (level: 'info' | 'warn' | 'error' | 'suc
   if (typeof window === 'undefined') return null;
   try {
     if (!tauriUpdaterModule) {
-      tauriUpdaterModule = await import('@tauri-apps/api/updater').catch((err) => {
-        logger?.('warn', 'tauri-ipc', 'Failed to import @tauri-apps/api/updater module', err?.message || err);
-        return null;
-      });
+      const modV1 = '@tauri-apps/api/updater';
+      const modV2 = '@tauri-apps/plugin-updater';
+      tauriUpdaterModule = await import(/* @vite-ignore */ modV1).catch(() => null) as any;
+      if (!tauriUpdaterModule) {
+        tauriUpdaterModule = await import(/* @vite-ignore */ modV2).catch(() => null) as any;
+      }
+      if (!tauriUpdaterModule) {
+        const win = window as any;
+        if (win.__TAURI_PLUGIN_UPDATER__) {
+          tauriUpdaterModule = win.__TAURI_PLUGIN_UPDATER__;
+        } else if (win.__TAURI__?.updater) {
+          tauriUpdaterModule = win.__TAURI__.updater;
+        }
+      }
       if (tauriUpdaterModule) {
-        logger?.('success', 'tauri-ipc', 'Loaded @tauri-apps/api/updater module successfully');
+        logger?.('success', 'tauri-ipc', 'Loaded Tauri updater module successfully');
+      } else {
+        logger?.('warn', 'tauri-ipc', 'Could not load Tauri updater module via dynamic import or window globals');
       }
     }
     if (!tauriProcessModule) {
-      tauriProcessModule = await import('@tauri-apps/api/process').catch((err) => {
+      const procMod = '@tauri-apps/api/process';
+      tauriProcessModule = await import(/* @vite-ignore */ procMod).catch((err) => {
         logger?.('warn', 'tauri-ipc', 'Failed to import @tauri-apps/api/process module', err?.message || err);
         return null;
-      });
+      }) as any;
     }
     if (!tauriAppModule) {
-      tauriAppModule = await import('@tauri-apps/api/app').catch((err) => {
+      const appMod = '@tauri-apps/api/app';
+      tauriAppModule = await import(/* @vite-ignore */ appMod).catch((err) => {
         logger?.('warn', 'tauri-ipc', 'Failed to import @tauri-apps/api/app module', err?.message || err);
         return null;
-      });
+      }) as any;
     }
     return {
       updater: tauriUpdaterModule,
@@ -320,26 +334,33 @@ class AppUpdateService {
       // 2. Query official Tauri Updater native bridge first
       if (this.isTauriDesktop() && tauriModules?.updater) {
         try {
-          this.addLog('info', 'tauri-ipc', 'Invoking Tauri native updater IPC: checkUpdate()...');
-          const update = await tauriModules.updater.checkUpdate();
-          this.addLog('debug', 'tauri-ipc', 'Tauri checkUpdate() returned result', update);
+          this.addLog('info', 'tauri-ipc', 'Invoking Tauri native updater IPC (checkUpdate / check)...');
+          let update: any = null;
+          if (typeof (tauriModules.updater as any).checkUpdate === 'function') {
+            update = await (tauriModules.updater as any).checkUpdate();
+          } else if (typeof (tauriModules.updater as any).check === 'function') {
+            update = await (tauriModules.updater as any).check();
+          }
+          this.addLog('debug', 'tauri-ipc', 'Tauri updater returned result', update);
 
-          if (update?.shouldUpdate) {
+          const shouldUpdate = update?.shouldUpdate ?? update?.available;
+
+          if (shouldUpdate) {
             this.activeTauriUpdateHandle = update;
-            const releaseVersion = update.manifest?.version || APP_VERSION;
-            const minVer = (update.manifest as any)?.minimum_version || (update.manifest as any)?.minSupportedVersion || '1.0.0';
+            const releaseVersion = update?.version || update?.manifest?.version || APP_VERSION;
+            const minVer = (update?.manifest as any)?.minimum_version || (update?.manifest as any)?.minSupportedVersion || '1.0.0';
             const isMandatory = this.compareVersions(this.state.currentVersion, minVer) > 0;
 
             this.state.status = 'update_available';
             this.state.latestRelease = {
               version: releaseVersion,
-              releaseDate: (update.manifest as any)?.pub_date || (update.manifest as any)?.date || new Date().toISOString().split('T')[0],
-              notes: (update.manifest as any)?.notes || (update as any).body || 'به‌روزرسانی جدید تن‌خور دسکتاپ',
+              releaseDate: update?.date || (update?.manifest as any)?.pub_date || (update?.manifest as any)?.date || new Date().toISOString().split('T')[0],
+              notes: update?.body || (update?.manifest as any)?.notes || (update as any)?.notes || 'به‌روزرسانی جدید تن‌خور دسکتاپ',
               changelog: {
-                fa: [(update.manifest as any)?.notes || (update as any).body || 'افزوده شدن قابلیت‌های جدید و ارتقای کارایی'],
-                en: [(update.manifest as any)?.notes || (update as any).body || 'New features and bug fixes added.']
+                fa: [update?.body || (update?.manifest as any)?.notes || (update as any)?.notes || 'افزوده شدن قابلیت‌های جدید و ارتقای کارایی'],
+                en: [update?.body || (update?.manifest as any)?.notes || (update as any)?.notes || 'New features and bug fixes added.']
               },
-              downloadUrl: (update.manifest as any)?.url || 'https://github.com/brandyar/SizeGrid/releases/latest',
+              downloadUrl: (update?.manifest as any)?.url || 'https://github.com/brandyar/SizeGrid/releases/latest',
               minimum_version: minVer,
               isMandatory,
             };
