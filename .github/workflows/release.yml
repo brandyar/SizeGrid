@@ -28,9 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
-        run: |
-          node -e "if (require('fs').existsSync('package-lock.json')) require('fs').unlinkSync('package-lock.json')"
-          npm install
+        run: npm ci
 
       - name: Set Tauri Key Password
         shell: bash
@@ -53,4 +51,4 @@ jobs:
           releaseBody: 'Automated Tankhor signed update release build.'
           releaseDraft: false
           prerelease: false
-          tauriScript: npx tauri
+          tauriScript: npx @tauri-apps/cli@1

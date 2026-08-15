@@ -5,16 +5,16 @@
   "minimum_version": "1.0.0",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64-setup.exe",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWYyeUVPekdUZW1GZlFlME9WZ2R1L1ExQ25DaVJMZHNOOHNteHBDbXpkWjh0cTFLMDNKR3RaQjZGMDNOelF3dFJRK2JZWWIwM3RrWWVFemk1NmxjU3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg4MTk2CWZpbGU6VGFua2hvcl8xLjQuOV94NjQtc2V0dXAubnNpcy56aXAKaGpFNHRIZ2Fvb2ZUNTJsT2JzelR0dUFhR2F2TEwyVXVWUmxrQUE2U3Z6a3Z1Si9wWmkyM1J2U2pibzJFWHpGSDFJczMycmQ3VStRVnRjNUpFckQxQWc9PQo="
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64-setup.nsis.zip",
+      "signature": "untrusted comment: signature from tauri secret key\nRUQTw5Ie1p4Laf2yEOzGTemFfQe0OVgdu/Q1CnCiRLdsN8smxpCmzdZ8tq1K03JGtZB6F03NzQwtRQ+bYYb03tkYeEzi56lcSwk=\ntrusted comment: timestamp:1786788196\tfile:Tankhor_1.4.9_x64-setup.nsis.zip\nhjE4tHgaoofT52lObszTtuAaGavLL2UuVRlkAA6SvzkvuJ/pZi23RvSjbo2EXzFH1Is32rd7U+QVtc5JErD1Ag=="
     },
     "darwin-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64.dmg",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWYyeUVPekdUZW1GZlFlME9WZ2R1L1ExQ25DaVJMZHNOOHNteHBDbXpkWjh0cTFLMDNKR3RaQjZGMDNOelF3dFJRK2JZWWIwM3RrWWVFemk1NmxjU3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg4MTk2CWZpbGU6VGFua2hvcl8xLjQuOV94NjQtc2V0dXAubnNpcy56aXAKaGpFNHRIZ2Fvb2ZUNTJsT2JzelR0dUFhR2F2TEwyVXVWUmxrQUE2U3Z6a3Z1Si9wWmkyM1J2U2pibzJFWHpGSDFJczMycmQ3VStRVnRjNUpFckQxQWc9PQo="
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64.app.tar.gz",
+      "signature": "untrusted comment: signature from tauri secret key\nRUQTw5Ie1p4Laa/AoWI208C/srB555onvGyfrL1ddEts+FduW5/nWaRXhsK33ksIQCUwfFPYk2DQ63tprUYljqCgCYAio6WEFw4=\ntrusted comment: timestamp:1786787927\tfile:Tankhor.app.tar.gz\nJfBWqW8RdtHvPVrexjAcPq2FKDarS2PM7TC2+KzmYFcyxLH2lVdr93SonB2HRTnZfj7j/b19CWVTtVL5+U3sAw=="
     },
     "darwin-aarch64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_aarch64.dmg",
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWEvQW9XSTIwOEMvc3JCNTU1b252R3lmckwxZGRFdHMrRmR1VzUvbldhUlhoc0szM2tzSVFDVXdmRlBZazJEUTYzdHByVVlsanFDZ0NZQWlvNldFRnc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg3OTI3CWZpbGU6VGFua2hvci5hcHAudGFyLmd6CkpmQldxVzhSZHRIdlBWcmV4akFjUHEyRktEYXJTMlBNN1RDMitLem1ZRmN5eExIMmxWZHI5M1NvbkIySFJUblpmajdqL2IxOUNXVlR0Vkw1K1Uzc0F3PT0K"
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_aarch64.app.tar.gz",
+      "signature": "untrusted comment: signature from tauri secret key\nRUQTw5Ie1p4Laa/AoWI208C/srB555onvGyfrL1ddEts+FduW5/nWaRXhsK33ksIQCUwfFPYk2DQ63tprUYljqCgCYAio6WEFw4=\ntrusted comment: timestamp:1786787927\tfile:Tankhor.app.tar.gz\nJfBWqW8RdtHvPVrexjAcPq2FKDarS2PM7TC2+KzmYFcyxLH2lVdr93SonB2HRTnZfj7j/b19CWVTtVL5+U3sAw=="
     }
   }
 }

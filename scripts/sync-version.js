@@ -40,13 +40,13 @@ if (fs.existsSync(publicLatestPath)) {
     latestJson.version = targetVersion;
     if (latestJson.platforms) {
       if (latestJson.platforms['windows-x86_64']) {
-        latestJson.platforms['windows-x86_64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_x64-setup.exe`;
+        latestJson.platforms['windows-x86_64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_x64-setup.nsis.zip`;
       }
       if (latestJson.platforms['darwin-x86_64']) {
-        latestJson.platforms['darwin-x86_64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_x64.dmg`;
+        latestJson.platforms['darwin-x86_64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_x64.app.tar.gz`;
       }
       if (latestJson.platforms['darwin-aarch64']) {
-        latestJson.platforms['darwin-aarch64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_aarch64.dmg`;
+        latestJson.platforms['darwin-aarch64'].url = `https://github.com/brandyar/SizeGrid/releases/download/v${targetVersion}/Tankhor_${targetVersion}_aarch64.app.tar.gz`;
       }
     }
     fs.writeFileSync(publicLatestPath, JSON.stringify(latestJson, null, 2) + '\n', 'utf8');
