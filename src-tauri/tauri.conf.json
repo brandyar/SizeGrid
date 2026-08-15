@@ -32,8 +32,8 @@
         "endpoints": [
           "https://raw.githubusercontent.com/brandyar/SizeGrid/main/public/latest.json",
           "https://tankhor.com/latest.json"
-        ],
-      },
+        ]
+      }
     },
     "bundle": {
       "active": true,
