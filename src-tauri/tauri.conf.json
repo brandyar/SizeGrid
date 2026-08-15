@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "Tankhor",
-    "version": "1.4.9"
+    "version": "1.5.0"
   },
   "tauri": {
     "allowlist": {

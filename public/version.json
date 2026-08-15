@@ -1,22 +1,20 @@
 {
-  "version": "1.4.9",
+  "version": "1.5.0",
   "releaseDate": "2026-08-15",
   "minSupportedVersion": "1.0.0",
   "minimum_version": "1.0.0",
-  "notes": "• نمایش جزئیات صف همگام‌سازی و مدیریت تغییرات منتظر ارسال به کلود (Sync Queue Visualizer)\n• ابزار سنجش و تست ارتباط با سرور Directus همراه با اندازه‌گیری زمان پاسخ (Cloud Connection Test)\n• امکان خروجی‌گرفتن و بازگردانی پشتیبان کامل از داده‌های محلی (Local Backup & Restore)",
+  "notes": "• بهبود و اصلاح کامل مسیریابی لینک‌های پیش‌نمایش خریدار و ویترین عمومی در اپلیکیشن دسکتاپ (In-App Desktop Navigation)\n• پشتیبانی کامل از لود محصولات محلی و آفلاین در صفحه پیش‌نمایش فروشگاه (Offline Desktop Storefront Preview)\n• ارتقای نسخه نرم‌افزار به ۱.۵.۰ جهت تست و بررسی سیستم بروزرسانی نیتیو دسکتاپ",
   "changelog": {
     "fa": [
-      "نمایش جزئیات صف همگام‌سازی و امکان حذف تغییرات معوق (Sync Queue Visualizer)",
-      "افزودن قابلیت تست اتصال و پینگ بلادرنگ سرور ابری Directus در تنظیمات",
-      "امکان پشتیبان‌گیری کامل (Export) و بازگردانی داده‌های محلی (Import/Restore) با حالت‌های Overwrite و Merge",
-      "ارتقای نسخه نرم‌افزار به ۱.۴.۹"
+      "اصلاح باز شدن لینک‌های پیش‌نمایش خریدار و ویترین عمومی در خود برنامه دسکتاپ بدون نیاز به مرورگر خارجی",
+      "افزودن قابلیت پشتیبانی از داده‌های محلی و آفلاین در پیش‌نمایش فروشگاه محصولات",
+      "ارتقای نسخه اپلیکیشن به ۱.۵.۰"
     ],
     "en": [
-      "Visualizer for pending offline sync queue items with individual item management",
-      "Cloud Directus server connection and latency ping tester in store settings",
-      "Local database JSON full backup export and restore capabilities (Overwrite & Merge)",
-      "Upgraded application version to 1.4.9"
+      "Fixed opening buyer preview and public showcase links directly inside the desktop application",
+      "Added support for local offline products in storefront preview",
+      "Upgraded application version to 1.5.0"
     ]
   },
-  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.4.9"
+  "downloadUrl": "https://github.com/brandyar/SizeGrid/releases/tag/v1.5.0"
 }

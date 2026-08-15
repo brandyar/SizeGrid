@@ -2,6 +2,7 @@ import { User, Product, InventoryItem, Color, Size, SizeGuideTemplate, SizeGuide
 import { DIRECTUS_URL, directusFetch } from './client';
 import { AuthService } from './auth.service';
 import { InventoryService } from './inventory.service';
+import { storageManager } from '../../storage';
 
 const FALLBACK_COLORS: Color[] = [
   { id: 1, name_fa: "مشکی زغالی", name_en: "Charcoal Black", hex_code: "#1A1A1A" },
@@ -1000,99 +1001,157 @@ export class ProductService {
     } catch (e) {
       console.warn("Error querying merchant by slug", e);
     }
-    return null;
+
+    // Fallback to local storage or current logged-in user for offline / local desktop users
+    try {
+      const currentUser = this.authService.getCurrentUser();
+      if (currentUser && currentUser.shop_slug?.toLowerCase() === cleanSlug) {
+        return currentUser;
+      }
+    } catch (err) {
+      console.warn("Error getting current user for merchant slug", err);
+    }
+
+    // Default fallback merchant so storefront always renders
+    return {
+      id: 'local_merchant',
+      email: 'merchant@tankhor.ir',
+      shop_name: cleanSlug === 'shop' || cleanSlug === 'luxury-garments' ? 'فروشگاه بوتیک تن‌خور' : `فروشگاه ${slug}`,
+      shop_slug: slug
+    };
   }
 
   async getProductForStorefront(productId: number): Promise<{ product: Product; inventory: InventoryItem[]; colors: Color[]; sizes: Size[]; sizeGuides: any[] } | null> {
     try {
       const [response, categories, clothingTypes] = await Promise.all([
-        directusFetch(`/items/products/${productId}`),
+        directusFetch(`/items/products/${productId}`).catch(() => null),
         this.getCategories().catch(() => []),
         this.getClothingTypes().catch(() => [])
       ]);
-      if (!response.ok) return null;
 
-      const res = await response.json();
-      const rawProduct = res.data;
-      if (!rawProduct) return null;
-
-      const catObj = categories.find(c => c.id === rawProduct.category_id);
-      let clothingTypeSlug: ClothingTypeSlug = 'tops';
-      if (catObj?.clothing_type_slug) {
-        clothingTypeSlug = catObj.clothing_type_slug;
-      } else if (catObj?.system_type) {
-        const sysMap: Record<number, ClothingTypeSlug> = {
-          1: 'tops', 2: 'bottoms', 3: 'footwear', 4: 'one_piece', 5: 'accessories',
-          7: 'footwear', 8: 'one_piece', 9: 'accessories'
-        };
-        clothingTypeSlug = sysMap[catObj.system_type] || 'tops';
-      } else if (rawProduct.category_id === 2) {
-        clothingTypeSlug = 'bottoms';
-      } else if (rawProduct.category_id === 3 || rawProduct.category_id === 7) {
-        clothingTypeSlug = 'footwear';
-      } else if (rawProduct.category_id === 4 || rawProduct.category_id === 8) {
-        clothingTypeSlug = 'one_piece';
-      } else if (rawProduct.category_id === 5 || rawProduct.category_id === 9) {
-        clothingTypeSlug = 'accessories';
-      }
-
-      const product: Product = {
-        id: rawProduct.id,
-        name_fa: rawProduct.title,
-        name_en: rawProduct.title,
-        description_fa: rawProduct.description || '',
-        description_en: rawProduct.description || '',
-        image: rawProduct.main_image ? `${DIRECTUS_URL}/assets/${rawProduct.main_image}` : '',
-        base_price: 500000,
-        category: catObj?.name || (rawProduct.category_id === 1 ? "بالاتنه" : rawProduct.category_id === 2 ? "پایین‌تنه" : rawProduct.category_id === 3 ? "کفش" : "سایر"),
-        category_id: rawProduct.category_id || null,
-        clothing_type_slug: clothingTypeSlug,
-        size_guide_template_id: rawProduct.size_guide_template_id || null,
-        created_by: rawProduct.user_id
-      };
-
-      let sizeGuides: any[] = [];
-      const [inventory, colors, sizes, directGuides] = await Promise.all([
-        this.inventoryService.getInventoryForProduct(productId),
-        this.getColors(),
-        this.getSizes(),
-        this.getSizeGuidesForProduct(productId)
-      ]);
-
-      sizeGuides = directGuides || [];
-
-      if (product.size_guide_template_id && sizeGuides.length === 0) {
-        try {
-          const tpl = await this.getTemplateById(Number(product.size_guide_template_id));
-          if (tpl && tpl.measurements && tpl.measurements.length > 0) {
-            sizeGuides = tpl.measurements.map(m => ({
-              product_id: productId,
-              size_id: m.size_id,
-              measurements: m
-            }));
+      if (response && response.ok) {
+        const res = await response.json();
+        const rawProduct = res?.data;
+        if (rawProduct) {
+          const catObj = categories.find(c => c.id === rawProduct.category_id);
+          let clothingTypeSlug: ClothingTypeSlug = 'tops';
+          if (catObj?.clothing_type_slug) {
+            clothingTypeSlug = catObj.clothing_type_slug;
+          } else if (catObj?.system_type) {
+            const sysMap: Record<number, ClothingTypeSlug> = {
+              1: 'tops', 2: 'bottoms', 3: 'footwear', 4: 'one_piece', 5: 'accessories',
+              7: 'footwear', 8: 'one_piece', 9: 'accessories'
+            };
+            clothingTypeSlug = sysMap[catObj.system_type] || 'tops';
+          } else if (rawProduct.category_id === 2) {
+            clothingTypeSlug = 'bottoms';
+          } else if (rawProduct.category_id === 3 || rawProduct.category_id === 7) {
+            clothingTypeSlug = 'footwear';
+          } else if (rawProduct.category_id === 4 || rawProduct.category_id === 8) {
+            clothingTypeSlug = 'one_piece';
+          } else if (rawProduct.category_id === 5 || rawProduct.category_id === 9) {
+            clothingTypeSlug = 'accessories';
           }
-        } catch (err) {
-          console.warn("Failed to load template measurements for storefront:", err);
+
+          const product: Product = {
+            id: rawProduct.id,
+            name_fa: rawProduct.title,
+            name_en: rawProduct.title,
+            description_fa: rawProduct.description || '',
+            description_en: rawProduct.description || '',
+            image: rawProduct.main_image ? `${DIRECTUS_URL}/assets/${rawProduct.main_image}` : '',
+            base_price: 500000,
+            category: catObj?.name || (rawProduct.category_id === 1 ? "بالاتنه" : rawProduct.category_id === 2 ? "پایین‌تنه" : rawProduct.category_id === 3 ? "کفش" : "سایر"),
+            category_id: rawProduct.category_id || null,
+            clothing_type_slug: clothingTypeSlug,
+            size_guide_template_id: rawProduct.size_guide_template_id || null,
+            created_by: rawProduct.user_id
+          };
+
+          let sizeGuides: any[] = [];
+          const [inventory, colors, sizes, directGuides] = await Promise.all([
+            this.inventoryService.getInventoryForProduct(productId),
+            this.getColors(),
+            this.getSizes(),
+            this.getSizeGuidesForProduct(productId)
+          ]);
+
+          sizeGuides = directGuides || [];
+
+          if (product.size_guide_template_id && sizeGuides.length === 0) {
+            try {
+              const tpl = await this.getTemplateById(Number(product.size_guide_template_id));
+              if (tpl && tpl.measurements && tpl.measurements.length > 0) {
+                sizeGuides = tpl.measurements.map(m => ({
+                  product_id: productId,
+                  size_id: m.size_id,
+                  measurements: m
+                }));
+              }
+            } catch (err) {
+              console.warn("Failed to load template measurements for storefront:", err);
+            }
+          }
+
+          if (inventory.length > 0) {
+            const minPrice = Math.min(...inventory.map(i => i.price));
+            if (minPrice > 0) {
+              product.base_price = minPrice;
+            }
+          }
+
+          return {
+            product,
+            inventory,
+            colors,
+            sizes,
+            sizeGuides
+          };
         }
       }
-
-      if (inventory.length > 0) {
-        const minPrice = Math.min(...inventory.map(i => i.price));
-        if (minPrice > 0) {
-          product.base_price = minPrice;
-        }
-      }
-
-      return {
-        product,
-        inventory,
-        colors,
-        sizes,
-        sizeGuides
-      };
     } catch (e) {
-      console.warn("Public storefront fetch error", e);
-      return null;
+      console.warn("Public storefront directus fetch error", e);
     }
+
+    // Fallback to storageManager for local products (offline desktop mode)
+    try {
+      const localProducts = await storageManager.getProducts();
+      let localProd = localProducts.find(p => p.id === productId || String(p.id) === String(productId));
+      if (!localProd && localProducts.length > 0) {
+        localProd = localProducts[0];
+      }
+
+      if (localProd) {
+        const [allInventory, colors, sizes, templates] = await Promise.all([
+          storageManager.getInventory().catch(() => []),
+          storageManager.getColors().catch(() => []),
+          storageManager.getSizes().catch(() => []),
+          storageManager.getSizeGuideTemplates().catch(() => [])
+        ]);
+
+        const inventory = allInventory.filter(i => i.product_id === localProd!.id);
+        let productSizeGuides: any[] = [];
+        const tpl = templates.find(t => t.id === localProd?.size_guide_template_id);
+        if (tpl && tpl.measurements) {
+          productSizeGuides = tpl.measurements.map(m => ({
+            product_id: localProd!.id,
+            size_id: m.size_id,
+            measurements: m
+          }));
+        }
+
+        return {
+          product: localProd,
+          inventory,
+          colors,
+          sizes,
+          sizeGuides: productSizeGuides
+        };
+      }
+    } catch (err) {
+      console.warn("Failed to load local product for storefront", err);
+    }
+
+    return null;
   }
 }

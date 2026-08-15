@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { isDesktopEnv } from '../utils/desktop';
 
 interface RouterContextType {
   path: string;
@@ -82,10 +83,13 @@ export function RouterProvider({ children }: RouterProviderProps) {
         const href = anchor.getAttribute('href');
         const targetAttr = anchor.getAttribute('target');
         
-        // Only intercept if internal relative link and not target="_blank"
-        if (href && href.startsWith('/') && !targetAttr) {
-          e.preventDefault();
-          navigate(href);
+        // Intercept internal relative links
+        if (href && href.startsWith('/')) {
+          // On desktop, or if not target="_blank", navigate internally
+          if (isDesktopEnv() || !targetAttr) {
+            e.preventDefault();
+            navigate(href);
+          }
         }
       }
     };

@@ -1644,10 +1644,16 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
         <div className={`p-4 border-t space-y-2 ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`}>
           {currentUser?.shop_slug && (
             <a
-              href={`/shop/${currentUser.shop_slug}/product/101`}
-              target="_blank"
+              href={`/shop/${currentUser.shop_slug}/product/${products[0]?.id || 101}`}
+              target={isDesktopEnv() ? undefined : "_blank"}
               rel="noreferrer"
-              className="w-full py-2 px-3 border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/10 text-sky-500 text-[11px] font-bold rounded-xl flex items-center justify-between transition-all"
+              onClick={(e) => {
+                if (isDesktopEnv() || e.button === 0) {
+                  e.preventDefault();
+                  navigate(`/shop/${currentUser.shop_slug}/product/${products[0]?.id || 101}`);
+                }
+              }}
+              className="w-full py-2 px-3 border border-sky-500/20 bg-sky-500/5 hover:bg-sky-500/10 text-sky-500 text-[11px] font-bold rounded-xl flex items-center justify-between transition-all cursor-pointer"
             >
               <div className="flex items-center gap-2">
                 <Compass className="w-3.5 h-3.5" />
@@ -1849,9 +1855,15 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
 
                                       <a
                                         href={`/shop/${currentUser?.shop_slug || 'shop'}/product/${prod.id}`}
-                                        target="_blank"
+                                        target={isDesktopEnv() ? undefined : "_blank"}
                                         rel="noreferrer"
-                                        className="col-span-2 py-1 px-2 border border-dashed border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold rounded-lg flex items-center justify-center gap-1 transition-all whitespace-nowrap truncate"
+                                        onClick={(e) => {
+                                          if (isDesktopEnv() || e.button === 0) {
+                                            e.preventDefault();
+                                            navigate(`/shop/${currentUser?.shop_slug || 'shop'}/product/${prod.id}`);
+                                          }
+                                        }}
+                                        className="col-span-2 py-1 px-2 border border-dashed border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold rounded-lg flex items-center justify-center gap-1 transition-all whitespace-nowrap truncate cursor-pointer"
                                       >
                                         <Compass className="w-3.5 h-3.5 shrink-0" />
                                         <span className="truncate">{isRtl ? "پیش‌نمایش فروشگاه خریدار" : "Public Shop Preview"}</span>
@@ -1938,9 +1950,15 @@ export default function Dashboard({ lang, setLang, darkMode, setDarkMode }: Dash
                                             
                                             <a
                                               href={`/shop/${currentUser?.shop_slug || 'shop'}/product/${prod.id}`}
-                                              target="_blank"
+                                              target={isDesktopEnv() ? undefined : "_blank"}
                                               rel="noreferrer"
-                                              className="p-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg border border-emerald-500/30 transition-all"
+                                              onClick={(e) => {
+                                                if (isDesktopEnv() || e.button === 0) {
+                                                  e.preventDefault();
+                                                  navigate(`/shop/${currentUser?.shop_slug || 'shop'}/product/${prod.id}`);
+                                                }
+                                              }}
+                                              className="p-1.5 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-lg border border-emerald-500/30 transition-all cursor-pointer"
                                               title={isRtl ? "پیش‌نمایش خریدار" : "Public Shop Preview"}
                                             >
                                               <Compass className="w-3.5 h-3.5" />

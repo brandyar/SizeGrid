@@ -1,19 +1,19 @@
 {
-  "version": "1.4.9",
+  "version": "1.5.0",
   "notes": "• ذخیره‌سازی نیتیو و بلادرنگ کلیه داده‌ها در دیتابیس بومی دسکتاپ (SQLite)\n• همگام‌سازی و انتقال کامل و خودکار اطلاعات آنلاین به دیتابیس آفلاین محلی در زمان آنلاین شدن یا ورود به حساب\n• بهینه‌سازی و ساده‌سازی رابط کاربری صفحه ورود دسکتاپ",
   "pub_date": "2026-08-14T10:00:00Z",
   "minimum_version": "1.0.0",
   "platforms": {
     "windows-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64-setup.nsis.zip",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.5.0/Tankhor_1.5.0_x64-setup.nsis.zip",
       "signature": "untrusted comment: signature from tauri secret key\nRUQTw5Ie1p4Laf2yEOzGTemFfQe0OVgdu/Q1CnCiRLdsN8smxpCmzdZ8tq1K03JGtZB6F03NzQwtRQ+bYYb03tkYeEzi56lcSwk=\ntrusted comment: timestamp:1786788196\tfile:Tankhor_1.4.9_x64-setup.nsis.zip\nhjE4tHgaoofT52lObszTtuAaGavLL2UuVRlkAA6SvzkvuJ/pZi23RvSjbo2EXzFH1Is32rd7U+QVtc5JErD1Ag=="
     },
     "darwin-x86_64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_x64.app.tar.gz",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.5.0/Tankhor_1.5.0_x64.app.tar.gz",
       "signature": "untrusted comment: signature from tauri secret key\nRUQTw5Ie1p4Laa/AoWI208C/srB555onvGyfrL1ddEts+FduW5/nWaRXhsK33ksIQCUwfFPYk2DQ63tprUYljqCgCYAio6WEFw4=\ntrusted comment: timestamp:1786787927\tfile:Tankhor.app.tar.gz\nJfBWqW8RdtHvPVrexjAcPq2FKDarS2PM7TC2+KzmYFcyxLH2lVdr93SonB2HRTnZfj7j/b19CWVTtVL5+U3sAw=="
     },
     "darwin-aarch64": {
-      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.9/Tankhor_1.4.9_aarch64.app.tar.gz",
+      "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.5.0/Tankhor_1.5.0_aarch64.app.tar.gz",
       "signature": "untrusted comment: signature from tauri secret key\nRUQTw5Ie1p4Laa/AoWI208C/srB555onvGyfrL1ddEts+FduW5/nWaRXhsK33ksIQCUwfFPYk2DQ63tprUYljqCgCYAio6WEFw4=\ntrusted comment: timestamp:1786787927\tfile:Tankhor.app.tar.gz\nJfBWqW8RdtHvPVrexjAcPq2FKDarS2PM7TC2+KzmYFcyxLH2lVdr93SonB2HRTnZfj7j/b19CWVTtVL5+U3sAw=="
     }
   }
