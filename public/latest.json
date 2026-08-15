@@ -2,7 +2,7 @@
   "version": "1.4.9",
   "notes": "• ذخیره‌سازی نیتیو و بلادرنگ کلیه داده‌ها در دیتابیس بومی دسکتاپ (SQLite)\n• همگام‌سازی و انتقال کامل و خودکار اطلاعات آنلاین به دیتابیس آفلاین محلی در زمان آنلاین شدن یا ورود به حساب\n• بهینه‌سازی و ساده‌سازی رابط کاربری صفحه ورود دسکتاپ",
   "pub_date": "2026-08-14T10:00:00Z",
-  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYWYyeUVPekdUZW1GZlFlME9WZ2R1L1ExQ25DaVJMZHNOOHNteHBDbXpkWjh0cTFLMDNKR3RaQjZGMDNOelF3dFJRK2JZWWIwM3RrWWVFemk1NmxjU3drPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2Nzg4MTk2CWZpbGU6VGFua2hvcl8xLjQuOV94NjQtc2V0dXAubnNpcy56aXAKaGpFNHRIZ2Fvb2ZUNTJsT2JzelR0dUFhR2F2TEwyVXVWUmxrQUE2U3Z6a3Z1Si9wWmkyM1J2U2pibzJFWHpGSDFJczMycmQ3VStRVnRjNUpFckQxQWc9PQo=",
+  "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRVHc1SWUxcDRMYVJyUjlLZGp5dG9ZcFQ2RHppUVd3bGlseGdxaUE3SWlmb2xnTS90dXdpbmpUNjBkdzNrd05zWTNicXp5MHNxRlgrMER4Q2FITFpmUHJKOXpibjJIbXdJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg2NzExNzExCWZpbGU6VGFua2hvcl8xLjQuOF94NjQtc2V0dXAubnNpcy56aXAKVjJ5dXhQb0dzT01RNDdybUk3bGszczI0WUIxRWNvNVkrTnM4WE5senlTZmN0ZDQ4QUU4RmdaQlYvN0ZjV3Jhd1Rvd3FZRHF4eGlCVVJHQ2k5T2RwQUE9PQo=",
   "url": "https://github.com/brandyar/SizeGrid/releases/download/v1.4.8/Tankhor_1.4.8_x64-setup.exe",
   "minimum_version": "1.0.0",
   "platforms": {
