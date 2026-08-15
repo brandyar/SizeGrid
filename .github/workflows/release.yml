@@ -28,7 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=optional
 
       - name: Set Tauri Key Password
         shell: bash
